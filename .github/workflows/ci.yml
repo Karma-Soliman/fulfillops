@@ -119,7 +119,7 @@ jobs:
       - name: Cache Trivy vulnerability database
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
-          path: ~/.cache/trivy
+          path: .cache/trivy
           key: trivy-db-${{ runner.os }}-${{ github.run_id }}
           restore-keys: trivy-db-${{ runner.os }}-
       - name: Blocking scan for fixable HIGH and CRITICAL vulnerabilities
