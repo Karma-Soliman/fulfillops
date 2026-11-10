@@ -16,7 +16,8 @@ def main():
     models = automap_base()
     models.prepare(autoload_with=engine)
     repository = Repository(sessionmaker(engine), models.classes.jobs,
-                            models.classes.orders, config.lease_seconds)
+                            models.classes.orders, models.classes.inventory,
+                            models.classes.order_items, config.lease_seconds)
     stopping = threading.Event()
     for sig in (signal.SIGTERM, signal.SIGINT):
         signal.signal(sig, lambda *_: stopping.set())
@@ -29,7 +30,7 @@ def main():
                 continue
             completed = repository.complete(claim)
             print(json.dumps({"event": "job_completed" if completed else "claim_lost",
-                              "job_id": claim.job_id, "worker_id": worker_id}), flush=True)
+                              "job_id": str(claim.job_id), "worker_id": worker_id}), flush=True)
     finally:
         engine.dispose()
 
