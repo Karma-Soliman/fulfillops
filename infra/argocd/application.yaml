@@ -1,0 +1,39 @@
+# Declares the main-branch Kustomize overlay that Argo CD will continuously reconcile.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  # Gives the GitOps application its stable Argo CD name.
+  name: fulfillops
+  # Applications live in Argo CD's system namespace.
+  namespace: argocd
+spec:
+  # Applies the least-privilege source and destination restrictions from project.yaml.
+  project: fulfillops
+  source:
+    # Reads the public repository over HTTPS; no repository credential is needed.
+    repoURL: https://github.com/Karma-Soliman/fulfillops.git
+    # Uses only changes merged into main as deployment input.
+    targetRevision: main
+    # Selects the kind-specific Kustomize overlay containing the local image tag.
+    path: infra/k8s/overlays/kind
+  destination:
+    # Targets this in-cluster Kubernetes API and the application namespace only.
+    server: https://kubernetes.default.svc
+    namespace: fulfillops
+  syncPolicy:
+    # Deletes removed Git resources and repairs manual drift for resources managed by this app.
+    automated:
+      prune: true
+      selfHeal: true
+    # Creates the destination namespace if it does not exist before applying its resources.
+    syncOptions:
+      - CreateNamespace=true
+    # Retries transient sync failures three times with increasing delay.
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m
+  # Secret fulfillops-db is intentionally absent from Git and managed by bootstrap-secrets.sh.
+  # Argo CD therefore neither creates nor prunes that local database credential Secret.

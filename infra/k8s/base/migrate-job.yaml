@@ -1,0 +1,91 @@
+# Runs the idempotent schema migration once before application deployments.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fulfillops-migrate
+  namespace: fulfillops
+  # These annotations are inert during manual kubectl apply and control later Argo CD sync ordering.
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "1"
+  # Identifies the one-shot migration component.
+  labels:
+    app.kubernetes.io/component: migrate
+spec:
+  backoffLimit: 4
+  template:
+    metadata:
+      # Marks this pod as the migration workload.
+      labels:
+        app.kubernetes.io/name: fulfillops
+        app.kubernetes.io/component: migrate
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: fulfillops-app
+      automountServiceAccountToken: false
+      # Uses the API's unprivileged pod identity and default seccomp profile.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      # Uses the Postgres client utility to wait before starting the migration process.
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:16.10@sha256:21f6013073bc6b92830a2129570e2f5ec42a6c734b5a985a41e83aa58f54c3c1
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c"]
+          args:
+            - until pg_isready -h postgres -p 5432 -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do echo 'waiting for postgres'; sleep 2; done
+          envFrom:
+            - secretRef:
+                name: fulfillops-db
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+      # Runs the migration command with the same identity and filesystem protections as app pods.
+      containers:
+        - name: migrate
+          image: fulfillops
+          imagePullPolicy: IfNotPresent
+          args: ["migrate"]
+          envFrom:
+            - configMapRef:
+                name: fulfillops-config
+            - secretRef:
+                name: fulfillops-db
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      # Provides the writable temporary directory required with a read-only container root.
+      volumes:
+        - name: tmp
+          emptyDir: {}

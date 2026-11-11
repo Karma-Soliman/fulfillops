@@ -1,0 +1,106 @@
+# Runs two stateless API replicas with safe rolling updates and health probes.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fulfillops-api
+  namespace: fulfillops
+  # Schedules the API after database and migration resources under Argo CD.
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  # Identifies the HTTP API workload.
+  labels:
+    app.kubernetes.io/component: api
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  minReadySeconds: 5
+  progressDeadlineSeconds: 90
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fulfillops
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      # Matches the Deployment and API Service selectors.
+      labels:
+        app.kubernetes.io/name: fulfillops
+        app.kubernetes.io/component: api
+    spec:
+      serviceAccountName: fulfillops-app
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      # Runs the API under the dedicated unprivileged application UID.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: fulfillops
+          imagePullPolicy: IfNotPresent
+          args: ["api"]
+          ports:
+            - name: http
+              containerPort: 8080
+          # Loads non-secret settings and credentials from separate Kubernetes objects.
+          envFrom:
+            - configMapRef:
+                name: fulfillops-config
+            - secretRef:
+                name: fulfillops-db
+          # Gives startup time while allowing readiness and liveness to use their own thresholds.
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          # Requests reserve baseline capacity; no CPU limit avoids throttling that can delay probes.
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+          # Keeps the container root read-only and drops privileges it does not need.
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          # Lets the process write temporary runtime files despite its read-only root filesystem.
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          # Drains requests briefly before Kubernetes sends SIGTERM to the API process.
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 10
+      # Provides ephemeral writable storage only for /tmp.
+      volumes:
+        - name: tmp
+          emptyDir: {}

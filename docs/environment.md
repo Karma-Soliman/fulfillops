@@ -1,0 +1,11 @@
+# Pinned local Kubernetes environment
+
+| Component | Version and digest | Defined in |
+| --- | --- | --- |
+| kind node image | `kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5` | `infra/kind/cluster.yaml` |
+| Prometheus image | `prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06` | `infra/k8s/base/prometheus/deployment.yaml`, `compose.yaml` |
+| Argo CD | `v3.6.1` | `infra/argocd/install/kustomization.yaml` |
+
+This is the default node image listed in the [kind v0.33.0 release notes](https://github.com/kubernetes-sigs/kind/releases/tag/v0.33.0). The release notes state that the image supports both amd64 and arm64.
+
+Prometheus is pinned to the official `prom/prometheus:v3.16.0` release. Its OCI index digest was read from Docker Hub with `docker buildx imagetools inspect prom/prometheus:v3.16.0`; the release is listed on the [Prometheus v3.16.0 release page](https://github.com/prometheus/prometheus/releases/tag/v3.16.0).

@@ -1,0 +1,18 @@
+# Harmless releases change this annotation to produce a new API pod template.
+# The broken drill changes readinessProbe.path to /health/broken on its temporary PR branch only.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fulfillops-api
+  namespace: fulfillops
+spec:
+  template:
+    metadata:
+      annotations:
+        fulfillops.io/release-note: "initial"
+    spec:
+      containers:
+        - name: api
+          readinessProbe:
+            httpGet:
+              path: /health/ready

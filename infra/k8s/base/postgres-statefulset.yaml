@@ -1,0 +1,92 @@
+# Runs the single durable PostgreSQL instance with stable storage and identity.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: fulfillops
+  # Protects the database from Argo CD pruning and orders it before other resources.
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/sync-wave: "0"
+  # Identifies this workload as the database component.
+  labels:
+    app.kubernetes.io/component: db
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fulfillops
+      app.kubernetes.io/component: db
+  template:
+    metadata:
+      # Keeps the pod selector consistent with the Service and StatefulSet.
+      labels:
+        app.kubernetes.io/name: fulfillops
+        app.kubernetes.io/component: db
+    spec:
+      # Runs PostgreSQL as its image's non-root postgres user and labels volume files accordingly.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          # Matches the tag and digest used by the local Compose stack.
+          image: postgres:16.10@sha256:21f6013073bc6b92830a2129570e2f5ec42a6c734b5a985a41e83aa58f54c3c1
+          imagePullPolicy: IfNotPresent
+          # Reads database credentials from the separately bootstrapped Secret.
+          envFrom:
+            - secretRef:
+                name: fulfillops-db
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - name: postgres
+              containerPort: 5432
+          # Checks that PostgreSQL accepts connections using configured database credentials.
+          readinessProbe:
+            exec:
+              command: ["/bin/sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          # Restarts PostgreSQL only when it stops responding to local readiness checks.
+          livenessProbe:
+            exec:
+              command: ["/bin/sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          # Reserves enough startup memory and caps database memory use.
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+          # PostgreSQL writes socket and runtime files outside PGDATA, so its root filesystem stays writable.
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        # Creates one persistent 1 GiB volume for the database pod.
+        name: postgres-data
+        labels:
+          app.kubernetes.io/component: db
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi

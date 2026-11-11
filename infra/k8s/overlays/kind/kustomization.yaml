@@ -1,0 +1,12 @@
+# Builds the base stack with the commit-specific local image tag used by this kind overlay.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ../../base
+# Adds a harmless pod-template annotation; changing its value exercises a real rollout.
+patches:
+- path: release-patch.yaml
+images:
+- name: fulfillops
+  newName: fulfillops
+  newTag: b5b8c6ea281976ad99e743b372d5900f05155a55

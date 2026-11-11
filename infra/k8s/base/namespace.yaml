@@ -1,0 +1,9 @@
+# Creates the namespace that contains all application resources.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fulfillops
+  # Identifies this namespace as part of the FulfillOps application.
+  labels:
+    app.kubernetes.io/name: fulfillops
+    app.kubernetes.io/part-of: fulfillops

@@ -1,0 +1,20 @@
+# Publishes each ready worker pod's metrics endpoint through headless-service DNS discovery.
+apiVersion: v1
+kind: Service
+metadata:
+  # Gives Prometheus a stable DNS name whose records contain pod addresses.
+  name: fulfillops-worker-metrics
+  namespace: fulfillops
+  # Identifies the service with the worker component it selects.
+  labels:
+    app.kubernetes.io/component: worker
+spec:
+  # Headless DNS returns every selected pod IP, so Prometheus scrapes replicas individually without Kubernetes API access or RBAC.
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: fulfillops
+    app.kubernetes.io/component: worker
+  ports:
+    - name: metrics
+      port: 9100
+      targetPort: metrics

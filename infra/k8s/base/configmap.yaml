@@ -1,0 +1,18 @@
+# Stores non-secret runtime settings shared by API and worker processes.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fulfillops-config
+  namespace: fulfillops
+  # Identifies configuration used by both application components.
+  labels:
+    app.kubernetes.io/component: api
+data:
+  APP_ENV: lab
+  LOG_LEVEL: INFO
+  DB_POOL_SIZE: "5"
+  WORKER_LEASE_SECONDS: "10"
+  WORKER_MAX_ATTEMPTS: "3"
+  WORKER_BACKOFF_BASE_SECONDS: "1"
+  WORKER_BACKOFF_MAX_SECONDS: "8"
+  WORKER_POLL_INTERVAL_SECONDS: "0.5"

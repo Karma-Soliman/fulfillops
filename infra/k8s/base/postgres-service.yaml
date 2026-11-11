@@ -1,0 +1,19 @@
+# Gives the StatefulSet a stable DNS name and stable per-pod DNS records.
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: fulfillops
+  # Marks this as the database network endpoint.
+  labels:
+    app.kubernetes.io/component: db
+spec:
+  # Headless service leaves endpoint discovery to Kubernetes DNS.
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: fulfillops
+    app.kubernetes.io/component: db
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres

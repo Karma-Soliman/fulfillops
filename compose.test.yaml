@@ -1,0 +1,21 @@
+name: fulfillops-test
+
+services:
+  postgres:
+    volumes:
+      - test-pgdata:/var/lib/postgresql/data
+
+  migrate:
+    environment:
+      APP_ENV: test
+
+  api:
+    environment:
+      APP_ENV: test
+
+  worker:
+    environment:
+      APP_ENV: test
+
+volumes:
+  test-pgdata:
