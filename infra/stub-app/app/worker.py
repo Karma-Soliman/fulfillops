@@ -3,12 +3,13 @@ import logging
 import os
 import signal
 import threading
-import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, generate_latest
 
-logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper(), stream=__import__("sys").stdout)
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO").upper(), stream=__import__("sys").stdout
+)
 logger = logging.getLogger("fulfillops.stub.worker")
 HEARTBEATS = Counter("fulfillops_worker_heartbeats_total", "Worker heartbeat count")
 stopping = threading.Event()
@@ -35,7 +36,9 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     server = ThreadingHTTPServer(("0.0.0.0", 9100), Handler)
     server.timeout = 0.25
-    server_thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.25}, daemon=True)
+    server_thread = threading.Thread(
+        target=server.serve_forever, kwargs={"poll_interval": 0.25}, daemon=True
+    )
     server_thread.start()
 
     def stop(_signum, _frame):
@@ -46,7 +49,11 @@ def main():
     try:
         while not stopping.is_set():
             HEARTBEATS.inc()
-            logger.info(json.dumps({"event": "heartbeat", "hostname": os.getenv("HOSTNAME", "unknown")}))
+            logger.info(
+                json.dumps(
+                    {"event": "heartbeat", "hostname": os.getenv("HOSTNAME", "unknown")}
+                )
+            )
             stopping.wait(2)
     finally:
         server.shutdown()

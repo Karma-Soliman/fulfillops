@@ -1,0 +1,293 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_CONTEXT: infra/stub-app
+  PYTHON_PATHS: infra/stub-app/app tests/deployment
+  IMAGE_TAG: fulfillops:${{ github.sha }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - name: Ruff check and format check
+        run: |
+          python -m pip install --disable-pip-version-check ruff==0.11.10
+          read -ra py_paths <<< "$PYTHON_PATHS"
+          ruff check "${py_paths[@]}"
+          ruff format --check "${py_paths[@]}"
+      - name: Hadolint all Dockerfiles
+        run: |
+          mapfile -d '' dockerfiles < <(find . -type f -name Dockerfile -print0)
+          if [ "${#dockerfiles[@]}" -eq 0 ]; then
+            echo "No Dockerfiles found" >&2
+            exit 1
+          fi
+          docker run --rm -v "$PWD:/work" -w /work --entrypoint hadolint hadolint/hadolint:v2.12.0-debian "${dockerfiles[@]}"
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.10@sha256:21f6013073bc6b92830a2129570e2f5ec42a6c734b5a985a41e83aa58f54c3c1
+        env:
+          POSTGRES_USER: fulfillops
+          POSTGRES_PASSWORD: ci-test-password
+          POSTGRES_DB: fulfillops
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fulfillops -d fulfillops"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://fulfillops:ci-test-password@localhost:5432/fulfillops
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - name: Install locked test dependencies
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.7.3
+          cd "$IMAGE_CONTEXT"
+          uv sync --frozen --group test
+      - name: Run deployment contract tests
+        id: pytest
+        run: |
+          cd "$IMAGE_CONTEXT"
+          uv run --frozen --group test pytest ../../tests/deployment --junitxml=../../junit.xml
+      - name: Upload JUnit results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: junit
+          path: junit.xml
+          if-no-files-found: warn
+      - name: Test summary
+        if: always()
+        run: |
+          if [ "${{ steps.pytest.outcome }}" = success ]; then
+            echo "### Deployment contract tests: PASS" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Deployment contract tests: FAIL" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Build once for linux/amd64 and save image
+        run: |
+          docker buildx build --platform linux/amd64 --load -t "$IMAGE_TAG" "$IMAGE_CONTEXT"
+          docker save "$IMAGE_TAG" -o fulfillops-image.tar
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fulfillops-image
+          path: fulfillops-image.tar
+          retention-days: 7
+
+  scan:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: fulfillops-image
+      - name: Load the built image
+        run: docker load -i fulfillops-image.tar
+      - name: Cache Trivy vulnerability database
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .cache/trivy
+          key: trivy-db-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: trivy-db-${{ runner.os }}-
+      - name: Blocking scan for fixable HIGH and CRITICAL vulnerabilities
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE_TAG }}
+          format: table
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          trivyignores: .trivyignore
+          exit-code: "1"
+      - name: Informational scan of all severities
+        if: always()
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE_TAG }}
+          format: json
+          output: trivy-report.json
+          vuln-type: os,library
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          trivyignores: .trivyignore
+          exit-code: "0"
+      - name: Informational table
+        if: always()
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE_TAG }}
+          format: table
+          output: trivy-report-table.txt
+          vuln-type: os,library
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          trivyignores: .trivyignore
+          exit-code: "0"
+      - name: Upload informational scan report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: trivy-reports
+          path: |
+            trivy-report.json
+            trivy-report-table.txt
+          if-no-files-found: warn
+
+  sbom:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: fulfillops-image
+      - name: Load the built image
+        run: docker load -i fulfillops-image.tar
+      - name: Generate CycloneDX SBOM from the image
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          image: ${{ env.IMAGE_TAG }}
+          format: cyclonedx-json
+          output-file: sbom.cdx.json
+          upload-artifact: false
+      - name: Count packages
+        run: |
+          count=$(python3 -c 'import json; print(len(json.load(open("sbom.cdx.json")).get("components", [])))')
+          echo "SBOM contains $count packages." | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sbom
+          path: sbom.cdx.json
+
+  contract:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: fulfillops-image
+      - name: Load the single built image
+        run: docker load -i fulfillops-image.tar
+      - name: Create masked test environment file
+        shell: bash
+        run: |
+          password=$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')
+          echo "::add-mask::$password"
+          {
+            echo 'POSTGRES_USER=fulfillops'
+            echo "POSTGRES_PASSWORD=$password"
+            echo 'POSTGRES_DB=fulfillops'
+            echo "FULFILLOPS_IMAGE=$IMAGE_TAG"
+          } > .env
+      - name: Start isolated test stack without building
+        run: docker compose -f compose.yaml -f compose.test.yaml -p fulfillops-test up -d --no-build
+      - name: Wait for readiness
+        run: |
+          for attempt in $(seq 1 90); do
+            if curl --silent --fail http://localhost:8080/health/ready >/dev/null; then
+              echo "API became ready after ${attempt}s."
+              exit 0
+            fi
+            sleep 1
+          done
+          docker compose -f compose.yaml -f compose.test.yaml -p fulfillops-test ps
+          docker compose -f compose.yaml -f compose.test.yaml -p fulfillops-test logs
+          exit 1
+      - name: Blocking smoke checks
+        run: |
+          curl --fail --silent --show-error http://localhost:8080/health/live
+          curl --fail --silent --show-error http://localhost:8080/health/ready
+          curl --fail --silent --show-error http://localhost:8080/api/v1/catalog
+      - name: Full public contract checker (stub currently incomplete)
+        # TODO(remove before submission): blocking once the real API exists
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python3 scripts/fulfillops_public_checker.py --base-url http://localhost:8080 --concurrency --stress 2>&1 | tee checker-output.txt
+      - name: Upload checker output
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: checker-output
+          path: checker-output.txt
+          if-no-files-found: warn
+      - name: Tear down isolated test stack
+        if: always()
+        run: docker compose -f compose.yaml -f compose.test.yaml -p fulfillops-test down -v
+
+  publish:
+    needs: [lint, test, scan, sbom, contract]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: fulfillops-image
+      - name: Load, tag, and publish the already-tested image
+        id: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          owner=$(printf '%s' "$REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
+          image="ghcr.io/$owner/fulfillops:$COMMIT_SHA"
+          docker load -i fulfillops-image.tar
+          docker tag "$IMAGE_TAG" "$image"
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$REPOSITORY_OWNER" --password-stdin
+          docker push "$image"
+          digest=$(docker buildx imagetools inspect "$image" --format '{{.Manifest.Digest}}')
+          {
+            echo "image=ghcr.io/$owner/fulfillops"
+            echo "tag=$COMMIT_SHA"
+            echo "digest=$digest"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "### Published image"
+            echo "- Image: ghcr.io/$owner/fulfillops"
+            echo "- Tag: $COMMIT_SHA"
+            echo "- Digest: $digest"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Download SBOM artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: sbom
+      - name: Attach SBOM to the publish job
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: published-image-sbom
+          path: sbom.cdx.json

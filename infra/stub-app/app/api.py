@@ -9,15 +9,25 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
-logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper(), stream=__import__("sys").stdout)
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO").upper(), stream=__import__("sys").stdout
+)
 logger = logging.getLogger("fulfillops.stub")
-REQUESTS = Counter("fulfillops_http_requests_total", "HTTP requests", ("method", "route", "status"))
-LATENCY = Histogram("fulfillops_http_request_duration_seconds", "HTTP request latency", ("method", "route"))
-CATALOG = {"products": [
-    {"sku": "KIT-100", "unit_price_cents": 1299},
-    {"sku": "PART-200", "unit_price_cents": 599},
-    {"sku": "PACK-300", "unit_price_cents": 249},
-]}
+REQUESTS = Counter(
+    "fulfillops_http_requests_total", "HTTP requests", ("method", "route", "status")
+)
+LATENCY = Histogram(
+    "fulfillops_http_request_duration_seconds",
+    "HTTP request latency",
+    ("method", "route"),
+)
+CATALOG = {
+    "products": [
+        {"sku": "KIT-100", "unit_price_cents": 1299},
+        {"sku": "PART-200", "unit_price_cents": 599},
+        {"sku": "PACK-300", "unit_price_cents": 249},
+    ]
+}
 
 
 @asynccontextmanager
@@ -42,9 +52,17 @@ async def observe_request(request: Request, call_next):
         elapsed = time.perf_counter() - started
         REQUESTS.labels(request.method, route_name, str(status)).inc()
         LATENCY.labels(request.method, route_name).observe(elapsed)
-        logger.info(json.dumps({"method": request.method, "path": request.url.path,
-                                "status": status, "duration_seconds": elapsed,
-                                "hostname": os.getenv("HOSTNAME", "unknown")}))
+        logger.info(
+            json.dumps(
+                {
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status": status,
+                    "duration_seconds": elapsed,
+                    "hostname": os.getenv("HOSTNAME", "unknown"),
+                }
+            )
+        )
 
 
 @app.get("/health/live")
@@ -56,17 +74,23 @@ def live():
 def ready():
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
-        return Response('{"status":"not_ready"}', status_code=503, media_type="application/json")
+        return Response(
+            '{"status":"not_ready"}', status_code=503, media_type="application/json"
+        )
     try:
         with psycopg.connect(database_url, connect_timeout=1) as connection:
             with connection.cursor() as cursor:
-                cursor.execute("SELECT to_regclass('public.schema_migrations') IS NOT NULL")
+                cursor.execute(
+                    "SELECT to_regclass('public.schema_migrations') IS NOT NULL"
+                )
                 migrated = cursor.fetchone()[0]
         if migrated:
             return {"status": "ready"}
     except psycopg.Error:
         pass
-    return Response('{"status":"not_ready"}', status_code=503, media_type="application/json")
+    return Response(
+        '{"status":"not_ready"}', status_code=503, media_type="application/json"
+    )
 
 
 @app.get("/api/v1/catalog")
