@@ -1,0 +1,18 @@
+# Declares a kind cluster using the v1alpha4 configuration schema.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+# Gives the cluster a stable name used by kind and kubectl contexts.
+name: fulfillops
+# Creates one control-plane node and one worker so regular workloads run away from control-plane services.
+nodes:
+  # Runs the Kubernetes control plane and exposes the NodePort through a loopback-only host mapping.
+  - role: control-plane
+    # Maps host localhost:8080 to the cluster NodePort 30080 over TCP.
+    extraPortMappings:
+      # Restricts this mapping to this Mac rather than other machines on the network.
+      - containerPort: 30080
+        hostPort: 8080
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+  # Provides a schedulable node for application pods.
+  - role: worker

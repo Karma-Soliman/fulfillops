@@ -1,0 +1,9 @@
+# Builds the base stack with the commit-specific local image tag used by this kind overlay.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+images:
+  - name: fulfillops
+    newName: fulfillops
+    newTag: 0956502b864eaca837ab7724f2da72a73eb7c9a9

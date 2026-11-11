@@ -1,0 +1,21 @@
+# Lists the complete base stack so a single Kustomize build renders every object.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: fulfillops
+resources:
+  - namespace.yaml
+  - serviceaccount.yaml
+  - configmap.yaml
+  - postgres-service.yaml
+  - postgres-statefulset.yaml
+  - migrate-job.yaml
+  - api-deployment.yaml
+  - api-service.yaml
+  - api-pdb.yaml
+  - worker-deployment.yaml
+# Applies shared project labels without changing pod or service selectors.
+labels:
+  - pairs:
+      app.kubernetes.io/name: fulfillops
+      app.kubernetes.io/part-of: fulfillops
+    includeSelectors: false

@@ -1,0 +1,87 @@
+# Runs two asynchronous worker replicas with independent health endpoints and bounded shutdown.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fulfillops-worker
+  namespace: fulfillops
+  # Schedules workers alongside API resources after the migration wave under Argo CD.
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  # Identifies the asynchronous worker workload.
+  labels:
+    app.kubernetes.io/component: worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fulfillops
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      # Matches this Deployment's pod selector.
+      labels:
+        app.kubernetes.io/name: fulfillops
+        app.kubernetes.io/component: worker
+    spec:
+      serviceAccountName: fulfillops-app
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 8
+      # Runs worker processes under the same unprivileged application UID as the API.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: worker
+          image: fulfillops
+          imagePullPolicy: IfNotPresent
+          args: ["worker"]
+          ports:
+            - name: metrics
+              containerPort: 9100
+          # Shares non-secret configuration and DB credentials with the API.
+          envFrom:
+            - configMapRef:
+                name: fulfillops-config
+            - secretRef:
+                name: fulfillops-db
+          # Checks the worker's local health endpoint without coupling liveness to database availability.
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: metrics
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/live
+              port: metrics
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+          # Leaves CPU unbounded to prevent throttling and caps memory usage.
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+          # Restricts the container to non-root, read-only, capability-free execution.
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          # Allows temporary writes while keeping the image filesystem read-only.
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      # Provides the worker's ephemeral temporary directory.
+      volumes:
+        - name: tmp
+          emptyDir: {}
