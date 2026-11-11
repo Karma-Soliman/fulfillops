@@ -8,6 +8,7 @@ source scripts/lib-gitops.sh
 
 require_clean_main
 require_healthy_app
+require_kind_nodeport
 kubectl -n fulfillops rollout status deployment/fulfillops-api --timeout=60s
 ready="$(kubectl -n fulfillops get deployment fulfillops-api -o jsonpath='{.status.readyReplicas}')"
 desired="$(kubectl -n fulfillops get deployment fulfillops-api -o jsonpath='{.spec.replicas}')"

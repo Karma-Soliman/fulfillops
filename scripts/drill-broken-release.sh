@@ -15,7 +15,7 @@ if [[ "$ready" != 2 || "$desired" != 2 ]]; then
   echo "Broken-release drill requires 2/2 API pods Ready, got ${ready:-0}/${desired:-0}." >&2
   exit 1
 fi
-curl --fail --silent --show-error --max-time 3 http://localhost:8080/health/ready >/dev/null
+require_kind_nodeport
 
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 evidence_dir="docs/evidence/broken-release-$stamp"

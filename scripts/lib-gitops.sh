@@ -183,3 +183,15 @@ require_healthy_app() {
     return 1
   fi
 }
+
+require_kind_nodeport() {
+  local published compose_lb
+  published="$(docker ps --filter publish=8080 --format '{{.Names}}')"
+  compose_lb="$(printf '%s\n' "$published" | grep -E '(^|[-_])lb([-_]|$)' || true)"
+  if [[ -n "$compose_lb" ]]; then
+    echo "A Compose load balancer is publishing host port 8080; run make down before the kind drill." >&2
+    printf '%s\n' "$compose_lb" >&2
+    return 1
+  fi
+  curl --fail --silent --show-error --max-time 3 http://localhost:8080/health/ready >/dev/null
+}
