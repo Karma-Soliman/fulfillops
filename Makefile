@@ -1,4 +1,4 @@
-.PHONY: up down ps logs test-stack-up test-stack-down cluster-up cluster-down cluster-smoke k8s-render k8s-apply k8s-status k8s-delete argocd-install argocd-bootstrap argocd-refresh argocd-ui drill-drift
+.PHONY: up down ps logs test-stack-up test-stack-down cluster-up cluster-down cluster-smoke k8s-render k8s-apply k8s-status k8s-delete argocd-install argocd-bootstrap argocd-refresh argocd-ui drill-drift prom-evidence prom-ui
 
 # Start the development stack and build its stub image.
 up:
@@ -71,3 +71,12 @@ argocd-ui:
 # Introduce replica-count drift and record Argo CD's self-heal evidence.
 drill-drift:
 	./scripts/drill-drift.sh
+
+# Port-forward to in-cluster Prometheus, query metrics, and save timestamped evidence.
+prom-evidence:
+	./scripts/prom-evidence.sh
+
+# Forward the private in-cluster Prometheus UI to localhost:9090 for interactive inspection.
+prom-ui:
+	@echo "Prometheus UI: http://localhost:9090"
+	kubectl -n fulfillops port-forward svc/prometheus 9090:9090

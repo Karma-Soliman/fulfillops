@@ -1,0 +1,21 @@
+# Prometheus polls frequently enough to show target changes during the local drift and replica exercises.
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  # Headless Service DNS returns every ready API pod IP; DNS discovery needs no Kubernetes API access or RBAC.
+  - job_name: api
+    dns_sd_configs:
+      - names:
+          - fulfillops-api-metrics.fulfillops.svc.cluster.local
+        type: A
+        port: 8080
+        refresh_interval: 5s
+  # Headless Service DNS returns every ready worker pod IP; DNS discovery needs no Kubernetes API access or RBAC.
+  - job_name: worker
+    dns_sd_configs:
+      - names:
+          - fulfillops-worker-metrics.fulfillops.svc.cluster.local
+        type: A
+        port: 9100
+        refresh_interval: 5s
