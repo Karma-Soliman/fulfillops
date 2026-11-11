@@ -1,4 +1,4 @@
-.PHONY: up down ps logs test-stack-up test-stack-down cluster-up cluster-down cluster-smoke k8s-render k8s-apply k8s-status k8s-delete
+.PHONY: up down ps logs test-stack-up test-stack-down cluster-up cluster-down cluster-smoke k8s-render k8s-apply k8s-status k8s-delete argocd-install argocd-bootstrap argocd-refresh argocd-ui drill-drift
 
 # Start the development stack and build its stub image.
 up:
@@ -51,3 +51,23 @@ k8s-status:
 # Remove app workloads while retaining the local Secret and database PVC for data safety.
 k8s-delete:
 	kubectl -n fulfillops delete deployment/fulfillops-api deployment/fulfillops-worker statefulset/postgres job/fulfillops-migrate service/fulfillops-api service/postgres poddisruptionbudget/fulfillops-api configmap/fulfillops-config serviceaccount/fulfillops-app --ignore-not-found=true
+
+# Install the pinned Argo CD release and wait for its controller workloads.
+argocd-install:
+	./scripts/argocd-install.sh
+
+# Apply the AppProject and Application once the GitOps pull request has merged to main.
+argocd-bootstrap:
+	./scripts/argocd-bootstrap.sh
+
+# Ask Argo CD to reread Git immediately instead of waiting for its normal polling interval.
+argocd-refresh:
+	./scripts/argocd-refresh.sh
+
+# Print the initial admin password to the terminal and forward the Argo CD UI to localhost.
+argocd-ui:
+	./scripts/argocd-ui.sh
+
+# Introduce replica-count drift and record Argo CD's self-heal evidence.
+drill-drift:
+	./scripts/drill-drift.sh

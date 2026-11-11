@@ -1,0 +1,25 @@
+# Limits the GitOps application to one repository, one namespace, and one cluster-scoped kind.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  # Names the allowlist that the FulfillOps Application must use.
+  name: fulfillops
+  # AppProjects are namespaced Argo CD resources.
+  namespace: argocd
+spec:
+  # Explains why this project deliberately grants only the minimum required deployment scope.
+  description: >-
+    Allows only the public FulfillOps repository, the fulfillops namespace on this cluster, and
+    the Namespace cluster-scoped kind. This prevents sourcing unrelated code, writing to other
+    destinations, or changing other cluster resources.
+  sourceRepos:
+    # Allows manifests from the public FulfillOps repository only.
+    - https://github.com/Karma-Soliman/fulfillops.git
+  destinations:
+    # Restricts deployments to the application namespace in this Kubernetes cluster.
+    - namespace: fulfillops
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    # The Namespace is the only cluster-scoped object defined by the application manifests.
+    - group: ""
+      kind: Namespace

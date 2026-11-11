@@ -54,7 +54,7 @@ version (and digest where possible), never `latest`.
 | Component                     | Pinned version / digest           | Where it is set                           |
 | ----------------------------- | --------------------------------- | ----------------------------------------- |
 | kind node image (Kubernetes)  | `kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5` | `infra/kind/cluster.yaml` |
-| Argo CD                       | TODO (Task 7)                     | `infra/argocd/install/kustomization.yaml` |
+| Argo CD                       | `v3.6.1`                          | `infra/argocd/install/kustomization.yaml` |
 | Prometheus                    | TODO (Task 7b)                    | `infra/k8s/base/`, `compose.yaml`         |
 | PostgreSQL                    | TODO (Task 3), 16.x               | `compose.yaml`, `infra/k8s/base/`         |
 | nginx (Compose load balancer) | TODO (Task 3)                     | `compose.yaml`                            |

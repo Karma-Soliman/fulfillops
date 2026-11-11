@@ -1,0 +1,9 @@
+# Installs the official non-HA Argo CD manifest from a pinned upstream release.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Places Argo CD's namespaced resources in its dedicated system namespace.
+namespace: argocd
+resources:
+  # Official release instructions use this exact v3.6.1 install manifest URL.
+  # Release quote: "kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/v3.6.1/manifests/install.yaml"
+  - https://raw.githubusercontent.com/argoproj/argo-cd/v3.6.1/manifests/install.yaml
