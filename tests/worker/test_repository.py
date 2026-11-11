@@ -13,6 +13,7 @@ from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import sessionmaker
 
 from worker.repository import Claim, Repository
+from worker.processor import process_claim
 
 
 @pytest.fixture
@@ -232,3 +233,172 @@ def test_replaced_claim_cannot_apply_business_effect(sessions):
     with sessions() as session:
         assert session.get(sessions.models.jobs, job_id).attempts == 2
         assert session.get(sessions.models.orders, order_id).status == "completed"
+
+
+def expire(sessions, job_id):
+    with sessions.begin() as session:
+        session.execute(text("UPDATE jobs SET lease_expires_at = now() - interval '1 second' WHERE id = :id"), {"id": job_id})
+
+
+def make_retry_due(sessions, job_id):
+    with sessions.begin() as session:
+        session.execute(text("UPDATE jobs SET available_at = now() - interval '1 second' WHERE id = :id"), {"id": job_id})
+
+
+def test_expired_job_reclaimed_and_stale_worker_fenced(sessions):
+    _, job_id = seed(sessions)
+    repo = repository(sessions)
+    stale = repo.claim("old")
+    expire(sessions, job_id)
+    current = repo.claim("new")
+    assert current.job_id == stale.job_id and current.token != stale.token
+    assert not repo.renew(stale)
+    assert not repo.fail(stale)
+    assert not repo.complete(stale)
+    assert repo.complete(current)
+    assert stock(sessions) == (6, 0)
+
+
+def test_renew_extends_valid_lease_but_cannot_revive_expired_one(sessions):
+    _, job_id = seed(sessions)
+    repo = repository(sessions)
+    claim = repo.claim("owner")
+    with sessions() as session:
+        before = session.get(sessions.models.jobs, job_id).lease_expires_at
+    assert repo.renew(claim)
+    with sessions() as session:
+        assert session.get(sessions.models.jobs, job_id).lease_expires_at > before
+    expire(sessions, job_id)
+    assert not repo.renew(claim)
+
+
+def test_poison_job_has_backoff_and_stops_after_three_attempts(sessions):
+    order_id, job_id = seed(sessions)
+    repo = repository(sessions)
+    for attempt in range(1, 4):
+        claim = repo.claim("worker")
+        assert claim is not None
+        assert repo.fail(claim, "secret must never be stored")
+        with sessions() as session:
+            job = session.get(sessions.models.jobs, job_id)
+            assert job.attempts == attempt
+            assert job.last_error == "processing_failed"
+            assert job.lease_token is None
+            if attempt < 3:
+                assert job.status == "queued"
+                assert (job.available_at - job.updated_at).total_seconds() == 2 ** (attempt - 1)
+            else:
+                assert job.status == "failed"
+                assert session.get(sessions.models.orders, order_id).status == "failed"
+        assert repo.claim("too-soon") is None
+        if attempt < 3:
+            make_retry_due(sessions, job_id)
+    assert repo.claim("fourth") is None
+    assert stock(sessions) == (7, 1)
+
+
+def test_retry_can_succeed_without_reserving_again(sessions):
+    _, job_id = seed(sessions)
+    repo = repository(sessions)
+    assert repo.fail(repo.claim("first"))
+    make_retry_due(sessions, job_id)
+    assert repo.complete(repo.claim("second"))
+    assert stock(sessions) == (6, 0)
+    with sessions() as session:
+        assert session.get(sessions.models.jobs, job_id).attempts == 2
+
+
+def test_third_crashed_attempt_is_failed_without_fourth_claim(sessions):
+    order_id, job_id = seed(sessions)
+    repo = repository(sessions)
+    for _ in range(3):
+        assert repo.claim("crashing-worker") is not None
+        expire(sessions, job_id)
+    assert repo.claim("recovery-worker") is None
+    assert repo.claim("fourth") is None
+    with sessions() as session:
+        job = session.get(sessions.models.jobs, job_id)
+        assert (job.status, job.attempts) == ("failed", 3)
+        assert job.last_error == "attempts_exhausted_after_interruption"
+        assert job.lease_token is None
+        assert session.get(sessions.models.orders, order_id).status == "failed"
+    assert stock(sessions) == (7, 1)
+
+
+def test_only_one_worker_reclaims_expired_job(sessions):
+    _, job_id = seed(sessions)
+    repository(sessions).claim("old")
+    expire(sessions, job_id)
+    results = race(lambda: repository(sessions).claim("new-one"),
+                   lambda: repository(sessions).claim("new-two"))
+    assert sum(claim is not None for claim in results) == 1
+    with sessions() as session:
+        assert session.get(sessions.models.jobs, job_id).attempts == 2
+
+
+def test_killed_process_leaves_durable_recoverable_work(sessions):
+    import selectors
+
+    _, job_id = seed(sessions)
+    url = sessions.kw["bind"].url.render_as_string(hide_password=False)
+    code = """
+import os, time
+from sqlalchemy import create_engine
+from sqlalchemy.ext.automap import automap_base
+from sqlalchemy.orm import sessionmaker
+from worker.repository import Repository
+engine = create_engine(os.environ['DATABASE_URL'])
+models = automap_base()
+models.prepare(autoload_with=engine)
+m = models.classes
+repo = Repository(sessionmaker(engine), m.jobs, m.orders, m.inventory, m.order_items)
+claim = repo.claim('doomed-process')
+assert claim is not None
+print('CLAIM_COMMITTED', flush=True)
+time.sleep(60)
+"""
+    child = subprocess.Popen([sys.executable, "-c", code],
+                             env=dict(os.environ, DATABASE_URL=url),
+                             stdout=subprocess.PIPE, text=True)
+    try:
+        with selectors.DefaultSelector() as selector:
+            selector.register(child.stdout, selectors.EVENT_READ)
+            assert selector.select(timeout=10), "Child did not commit its claim"
+            assert child.stdout.readline().strip() == "CLAIM_COMMITTED"
+        child.kill()
+        child.wait(timeout=5)
+        with sessions() as session:
+            assert session.get(sessions.models.jobs, job_id).status == "processing"
+        # Advance lease expiry in fixture SQL rather than slow wall-clock sleeps.
+        expire(sessions, job_id)
+        repo = repository(sessions)
+        recovered = repo.claim("survivor")
+        assert recovered.job_id == job_id
+        assert repo.complete(recovered)
+        assert not repo.complete(recovered)
+        assert stock(sessions) == (6, 0)
+    finally:
+        if child.poll() is None:
+            child.kill()
+            child.wait(timeout=5)
+        child.stdout.close()
+
+
+def test_poison_processing_callback_reaches_durable_failure(sessions):
+    order_id, job_id = seed(sessions)
+    repo = repository(sessions)
+
+    def poison(_claim):
+        raise ValueError("deterministic test failure; never persist raw exception")
+
+    for _ in range(3):
+        claim = repo.claim("poison-worker")
+        assert claim is not None
+        assert process_claim(repo, claim, poison) == "failure_recorded"
+        make_retry_due(sessions, job_id)
+    assert repo.claim("fourth") is None
+    with sessions() as session:
+        job = session.get(sessions.models.jobs, job_id)
+        assert (job.status, job.attempts, job.last_error) == ("failed", 3, "processing_failed")
+        assert session.get(sessions.models.orders, order_id).status == "failed"
+    assert stock(sessions) == (7, 1)
