@@ -1,4 +1,4 @@
-.PHONY: up down ps logs test-stack-up test-stack-down cluster-up cluster-down cluster-smoke k8s-render k8s-apply k8s-status k8s-delete argocd-install argocd-bootstrap argocd-refresh argocd-ui drill-drift prom-evidence prom-ui
+.PHONY: up down ps logs test-stack-up test-stack-down cluster-up cluster-down cluster-smoke k8s-render k8s-apply k8s-status k8s-delete argocd-install argocd-bootstrap argocd-refresh argocd-ui drill-drift prom-evidence prom-ui release drill-rollout drill-broken
 
 # Start the development stack and build its stub image.
 up:
@@ -80,3 +80,15 @@ prom-evidence:
 prom-ui:
 	@echo "Prometheus UI: http://localhost:9090"
 	kubectl -n fulfillops port-forward svc/prometheus 9090:9090
+
+# Create a GitOps release PR for an image SHA or release note; pass arguments through ARGS.
+release:
+	./scripts/release.sh $(ARGS)
+
+# Create a harmless release PR and record zero-downtime API rollout evidence after merge.
+drill-rollout:
+	./scripts/drill-rolling-update.sh
+
+# Prove a broken API release halts and recover by reverting its Git commit through PRs.
+drill-broken:
+	./scripts/drill-broken-release.sh

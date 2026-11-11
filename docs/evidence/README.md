@@ -1,0 +1,3 @@
+# Release drill evidence
+
+Each `rolling-update-<UTC timestamp>/` directory records the pre- and post-rollout Kubernetes and Argo CD state, ReplicaSets, events, and a 30-second readiness probe CSV; it proves a harmless GitOps change rolled the API without failed requests. Each `broken-release-<UTC timestamp>/` directory records the bad rollout halted by readiness and the progress deadline, availability samples while the old pods serve traffic, the Git revert recovery, and a manifest diff against the known-good revision. The rolling drill also copies its probe CSV to `docs/rolling_update_probe.csv` for the assessment hand-in path.
