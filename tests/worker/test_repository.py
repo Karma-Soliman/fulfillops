@@ -1,11 +1,13 @@
 import os
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 from pathlib import Path
 import subprocess
 import sys
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import sessionmaker
@@ -26,7 +28,9 @@ def sessions():
     schema = "worker_test_" + uuid4().hex
     with engine.begin() as connection:
         connection.execute(text(f'CREATE SCHEMA "{schema}"'))
-    isolated_url = parsed.update_query_dict({"options": f"-csearch_path={schema}"})
+    isolated_url = parsed.update_query_dict({
+        "options": f"-csearch_path={schema} -cstatement_timeout=5000 -clock_timeout=3000"
+    })
     isolated = create_engine(isolated_url)
     try:
         # database configuration cannot leak between test cases.
@@ -133,3 +137,98 @@ def test_inconsistent_reservation_rolls_back_all_completion(sessions):
     with sessions() as session:
         assert session.get(sessions.models.orders, order_id).status == "processing"
         assert session.get(sessions.models.jobs, job_id).status == "processing"
+
+
+def race(*operations):
+    """Start independent worker calls together; propagate errors to pytest."""
+    barrier = Barrier(len(operations))
+
+    def invoke(operation):
+        barrier.wait(timeout=5)
+        return operation()
+
+    with ThreadPoolExecutor(max_workers=len(operations)) as pool:
+        futures = [pool.submit(invoke, operation) for operation in operations]
+        return [future.result(timeout=10) for future in futures]
+
+
+def test_two_workers_claim_one_job_only_once(sessions):
+    _, job_id = seed(sessions)
+    first, second = repository(sessions), repository(sessions)
+    claims = race(lambda: first.claim("worker-one"),
+                  lambda: second.claim("worker-two"))
+    winners = [claim for claim in claims if claim is not None]
+    assert len(winners) == 1
+    assert winners[0].job_id == job_id
+    with sessions() as session:
+        job = session.get(sessions.models.jobs, job_id)
+        assert job.attempts == 1
+        assert job.locked_by == winners[0].worker_id
+        assert job.lease_token == winners[0].token
+
+
+def test_locked_job_is_skipped_without_blocking_other_work(sessions):
+    _, locked_id = seed(sessions)
+    _, eligible_id = seed(sessions)
+    Job = sessions.models.jobs
+    with sessions.begin() as owner:
+        owner.scalar(select(Job).where(Job.id == locked_id).with_for_update())
+        # The owner still holds its transaction open on a separate connection.
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            claim = pool.submit(repository(sessions).claim, "other-worker").result(timeout=5)
+        assert claim.job_id == eligible_id
+        assert owner.get(Job, locked_id).attempts == 0
+
+
+def test_two_workers_complete_different_orders_sharing_stock(sessions):
+    first_order, _ = seed(sessions, {"KIT-100": 2, "PART-200": 1})
+    second_order, _ = seed(sessions, {"PART-200": 2, "KIT-100": 1})
+    first, second = repository(sessions), repository(sessions)
+    claims = race(lambda: first.claim("worker-one"),
+                  lambda: second.claim("worker-two"))
+    assert all(claim is not None for claim in claims)
+    assert len({claim.job_id for claim in claims}) == 2
+    assert race(lambda: first.complete(claims[0]),
+                lambda: second.complete(claims[1])) == [True, True]
+    assert stock(sessions) == (4, 0)
+    assert stock(sessions, "PART-200") == (9, 0)
+    with sessions() as session:
+        for order_id in (first_order, second_order):
+            assert session.get(sessions.models.orders, order_id).status == "completed"
+
+
+def test_simultaneous_completion_applies_business_effect_once(sessions):
+    order_id, job_id = seed(sessions)
+    first, second = repository(sessions), repository(sessions)
+    claim = first.claim("worker-one")
+    results = race(lambda: first.complete(claim), lambda: second.complete(claim))
+    assert sorted(results) == [False, True]
+    assert stock(sessions) == (6, 0)
+    with sessions() as session:
+        assert session.get(sessions.models.jobs, job_id).attempts == 1
+        assert session.get(sessions.models.orders, order_id).status == "completed"
+
+
+def test_replaced_claim_cannot_apply_business_effect(sessions):
+    order_id, job_id = seed(sessions)
+    first, second = repository(sessions), repository(sessions)
+    stale = first.claim("worker-one")
+    new_token = uuid4()
+    # Simulate an atomic reclaim in the fixture. Automatic expired-job recovery
+    # is later work; this test isolates protection against a replaced owner.
+    with sessions.begin() as session:
+        session.execute(text("""
+            UPDATE jobs SET attempts = attempts + 1,
+                locked_by = 'worker-two', lease_token = :token,
+                lease_expires_at = clock_timestamp() + interval '10 seconds'
+            WHERE id = :id
+        """), {"token": new_token, "id": job_id})
+    current = Claim(job_id, order_id, new_token, "worker-two")
+    assert not first.complete(stale)
+    assert stock(sessions) == (7, 1)
+    assert second.complete(current)
+    assert not first.complete(stale)
+    assert stock(sessions) == (6, 0)
+    with sessions() as session:
+        assert session.get(sessions.models.jobs, job_id).attempts == 2
+        assert session.get(sessions.models.orders, order_id).status == "completed"

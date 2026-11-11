@@ -33,7 +33,8 @@ class Repository:
             order = session.get(Order, job.order_id, with_for_update=True)
             if order is None or order.status not in ("queued", "processing"):
                 raise RuntimeError("Job/order state mismatch")
-            now = session.scalar(select(func.now()))
+            # Order locking may have waited; start the lease from current DB time.
+            now = session.scalar(select(func.clock_timestamp()))
             job.status = "processing"
             job.attempts += 1
             job.locked_by = worker_id
