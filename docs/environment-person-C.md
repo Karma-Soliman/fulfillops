@@ -55,7 +55,7 @@ version (and digest where possible), never `latest`.
 | ----------------------------- | --------------------------------- | ----------------------------------------- |
 | kind node image (Kubernetes)  | `kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5` | `infra/kind/cluster.yaml` |
 | Argo CD                       | `v3.6.1`                          | `infra/argocd/install/kustomization.yaml` |
-| Prometheus                    | TODO (Task 7b)                    | `infra/k8s/base/`, `compose.yaml`         |
+| Prometheus                    | `prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06` | `infra/k8s/base/`, `compose.yaml` |
 | PostgreSQL                    | TODO (Task 3), 16.x               | `compose.yaml`, `infra/k8s/base/`         |
 | nginx (Compose load balancer) | TODO (Task 3)                     | `compose.yaml`                            |
 | Python base image             | TODO (Task 2), 3.12-slim + digest | `Dockerfile`                              |

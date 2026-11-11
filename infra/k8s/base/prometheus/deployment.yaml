@@ -1,0 +1,94 @@
+# Runs one Prometheus instance that scrapes each API and worker replica by DNS target.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  # Names the single in-cluster metrics collector.
+  name: prometheus
+  namespace: fulfillops
+  # Starts the collector in the application sync wave after the database and migration hook.
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  # Identifies the metrics collector component.
+  labels:
+    app.kubernetes.io/component: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fulfillops
+      app.kubernetes.io/component: prometheus
+  template:
+    metadata:
+      # Matches the Deployment and Service selectors for the collector pod.
+      labels:
+        app.kubernetes.io/name: fulfillops
+        app.kubernetes.io/component: prometheus
+    spec:
+      # Reuses the token-disabled app identity; DNS service discovery needs no API credentials.
+      serviceAccountName: fulfillops-app
+      automountServiceAccountToken: false
+      # Runs the official Prometheus image as its unprivileged nobody identity and grants the data volume group write access.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: prometheus
+          # Digest is the Docker Hub OCI index for prom/prometheus:v3.16.0, verified with docker buildx imagetools inspect.
+          image: prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06
+          imagePullPolicy: IfNotPresent
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time=2d
+          ports:
+            - name: http
+              containerPort: 9090
+          # Restricts memory while reserving baseline CPU and RAM for scraping and queries.
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+          # Uses a read-only image filesystem and drops privileges the collector does not need.
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          # Mounts the generated scrape configuration read-only.
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+              readOnly: true
+            # Uses ephemeral storage; lab metrics are lost if this pod is restarted.
+            - name: data
+              mountPath: /prometheus
+          # Exposes Prometheus readiness and process health to Kubernetes.
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+      # Keeps scrape config immutable in the pod and stores this lab's short-lived time series in emptyDir.
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-config
+        - name: data
+          emptyDir: {}

@@ -1,0 +1,20 @@
+# Exposes Prometheus only as an in-cluster ClusterIP Service.
+apiVersion: v1
+kind: Service
+metadata:
+  # Provides a stable endpoint for the local evidence and UI port-forward commands.
+  name: prometheus
+  namespace: fulfillops
+  # Identifies this endpoint as the Prometheus component.
+  labels:
+    app.kubernetes.io/component: prometheus
+spec:
+  # Keeps the query UI private to the cluster; production would add an authenticated proxy and a NetworkPolicy.
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: fulfillops
+    app.kubernetes.io/component: prometheus
+  ports:
+    - name: http
+      port: 9090
+      targetPort: http

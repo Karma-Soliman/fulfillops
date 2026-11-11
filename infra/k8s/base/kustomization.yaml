@@ -13,6 +13,15 @@ resources:
   - api-service.yaml
   - api-pdb.yaml
   - worker-deployment.yaml
+  - api-metrics-service.yaml
+  - worker-metrics-service.yaml
+  - prometheus/deployment.yaml
+  - prometheus/service.yaml
+# Generates a name-suffixed ConfigMap so a config change updates the Prometheus pod template and rolls it.
+configMapGenerator:
+  - name: prometheus-config
+    files:
+      - prometheus/prometheus.yml
 # Applies shared project labels without changing pod or service selectors.
 labels:
   - pairs:
