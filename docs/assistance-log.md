@@ -5,3 +5,4 @@
 2026-11-11 — Task 6: Kubernetes manifests — Codex (GPT-6) — generated Kustomize base and kind overlay, local Secret/build/apply scripts, Make targets, and manifest documentation; human review pending.
 2026-11-11 — Task 7: Argo CD GitOps — Codex (GPT-6) — generated pinned Argo CD install, least-privilege project and Application manifests, lifecycle/drift scripts, Make targets, and GitOps documentation; human review pending.
 2026-11-11 — Task 7b: Prometheus metrics collection — Codex (GPT-6) — generated Kubernetes and Compose scrape configurations, replica-level DNS discovery, pinned Prometheus deployment, query evidence script, Make targets, and image pin documentation; human review pending.
+2026-11-11 — Task 8: GitOps release and rollout drills — Codex (GPT-6) — generated Git PR release helpers, harmless rolling-update and broken-release recovery drills, evidence capture, and Make targets; human review pending.
