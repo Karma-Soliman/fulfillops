@@ -263,12 +263,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY_OWNER: ${{ github.repository_owner }}
           COMMIT_SHA: ${{ github.sha }}
+          GHCR_USERNAME: ${{ github.actor }}
         run: |
           owner=$(printf '%s' "$REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
           image="ghcr.io/$owner/fulfillops:$COMMIT_SHA"
           docker load -i fulfillops-image.tar
           docker tag "$IMAGE_TAG" "$image"
-          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$REPOSITORY_OWNER" --password-stdin
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
           docker push "$image"
           digest=$(docker buildx imagetools inspect "$image" --format '{{.Manifest.Digest}}')
           {
