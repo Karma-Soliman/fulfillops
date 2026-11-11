@@ -11,6 +11,7 @@ from sqlalchemy import create_engine, select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import DBAPIError
 
 from worker.repository import Claim, Repository
 from worker.processor import process_claim
@@ -402,3 +403,166 @@ def test_poison_processing_callback_reaches_durable_failure(sessions):
         assert (job.status, job.attempts, job.last_error) == ("failed", 3, "processing_failed")
         assert session.get(sessions.models.orders, order_id).status == "failed"
     assert stock(sessions) == (7, 1)
+
+
+def test_persisted_lower_attempt_limit_is_respected(sessions):
+    order_id, job_id = seed(sessions)
+    with sessions.begin() as session:
+        session.get(sessions.models.jobs, job_id).max_attempts = 1
+    repo = repository(sessions)
+    assert repo.fail(repo.claim("single-attempt"))
+    assert repo.claim("extra-attempt") is None
+    with sessions() as session:
+        job = session.get(sessions.models.jobs, job_id)
+        assert (job.status, job.attempts) == ("failed", 1)
+        assert session.get(sessions.models.orders, order_id).status == "failed"
+    assert stock(sessions) == (7, 1)
+
+
+def test_backoff_is_capped_and_future_job_is_not_claimed(sessions):
+    _, job_id = seed(sessions)
+    repo = repository(sessions)
+    repo.backoff_base, repo.backoff_max = 4, 5
+    for expected_delay in (4, 5):
+        claim = repo.claim("retry-worker")
+        assert repo.fail(claim)
+        with sessions() as session:
+            job = session.get(sessions.models.jobs, job_id)
+            assert (job.available_at - job.updated_at).total_seconds() == expected_delay
+        assert repo.claim("early-worker") is None
+        make_retry_due(sessions, job_id)
+
+
+def test_completed_outcome_survives_new_engine_and_worker(sessions):
+    order_id, job_id = seed(sessions)
+    original = repository(sessions)
+    claim = original.claim("before-restart")
+    assert original.complete(claim)
+    # A fresh engine has no pooled connections or ORM identity state in common.
+    engine = create_engine(sessions.kw["bind"].url)
+    try:
+        models = automap_base()
+        models.prepare(autoload_with=engine)
+        m = models.classes
+        restarted = Repository(sessionmaker(engine), m.jobs, m.orders, m.inventory, m.order_items)
+        assert restarted.claim("after-restart") is None
+        assert not restarted.complete(claim)
+        with sessionmaker(engine)() as session:
+            assert session.get(m.orders, order_id).status == "completed"
+            assert session.get(m.jobs, job_id).attempts == 1
+            inventory = session.get(m.inventory, "KIT-100")
+            assert (inventory.quantity_on_hand, inventory.quantity_reserved) == (6, 0)
+    finally:
+        engine.dispose()
+
+
+def test_database_failure_rolls_back_inventory_job_and_order(sessions):
+    order_id, job_id = seed(sessions)
+    repo = repository(sessions)
+    claim = repo.claim("worker")
+    with sessions.begin() as session:
+        session.execute(text("""
+            CREATE FUNCTION reject_completion() RETURNS trigger LANGUAGE plpgsql AS $$
+            BEGIN
+                IF NEW.status = 'completed' THEN
+                    RAISE EXCEPTION 'test-only completion failure';
+                END IF;
+                RETURN NEW;
+            END $$
+        """))
+        # Deferred until commit, after the ORM has sent ALL inventory/status writes.
+        session.execute(text("""
+            CREATE CONSTRAINT TRIGGER reject_completion_trigger
+            AFTER UPDATE ON orders DEFERRABLE INITIALLY DEFERRED
+            FOR EACH ROW EXECUTE FUNCTION reject_completion()
+        """))
+    with pytest.raises(DBAPIError):
+        repo.complete(claim)
+    with sessions() as session:
+        job = session.get(sessions.models.jobs, job_id)
+        assert job.status == "processing" and job.lease_token == claim.token
+        assert session.get(sessions.models.orders, order_id).status == "processing"
+    assert stock(sessions) == (7, 1)
+
+
+def test_lease_expiring_while_inventory_locked_cannot_complete(sessions):
+    from threading import Event
+    from sqlalchemy import event
+
+    _, job_id = seed(sessions)
+    repo = repository(sessions)
+    repo.lease_seconds = 0.25
+    claim = repo.claim("short-lease")
+    waiting = Event()
+    engine = sessions.kw["bind"]
+
+    def observe_inventory_lock(_conn, _cursor, statement, _params, _context, _many):
+        if "inventory" in statement.lower() and "FOR UPDATE" in statement:
+            waiting.set()
+
+    Inventory = sessions.models.inventory
+    with sessions.begin() as blocker:
+        blocker.scalar(select(Inventory).where(Inventory.sku == "KIT-100").with_for_update())
+        event.listen(engine, "before_cursor_execute", observe_inventory_lock)
+        pool = ThreadPoolExecutor(max_workers=1)
+        future = pool.submit(repo.complete, claim)
+        try:
+            assert waiting.wait(2), "Completion did not reach inventory locking"
+            # Real database-clock expiry, not an edited lease, while lock is held.
+            blocker.execute(text("SELECT pg_sleep(0.35)"))
+        finally:
+            event.remove(engine, "before_cursor_execute", observe_inventory_lock)
+            # Release the blocking lock before waiting for the worker thread.
+            blocker.commit()
+            pool.shutdown(wait=True)
+    assert future.result(timeout=5) is False
+    assert stock(sessions) == (7, 1)
+    assert repository(sessions).complete(repository(sessions).claim("recovery"))
+    assert stock(sessions) == (6, 0)
+
+
+def test_worker_entry_point_completes_and_exits_on_sigterm(sessions):
+    import json
+    import selectors
+
+    order_id, job_id = seed(sessions)
+    url = sessions.kw["bind"].url.render_as_string(hide_password=False)
+    child = subprocess.Popen([sys.executable, "-m", "worker.main"],
+                             cwd=Path(__file__).resolve().parents[2],
+                             env=dict(os.environ, DATABASE_URL=url),
+                             stdout=subprocess.PIPE, text=True)
+    try:
+        with selectors.DefaultSelector() as selector:
+            selector.register(child.stdout, selectors.EVENT_READ)
+            assert selector.select(timeout=10), "Worker did not report completion"
+            outcome = json.loads(child.stdout.readline())
+            assert outcome["event"] == "job_completed"
+            assert outcome["job_id"] == str(job_id)
+        child.terminate()
+        assert child.wait(timeout=5) == 0
+        with sessions() as session:
+            assert session.get(sessions.models.orders, order_id).status == "completed"
+        assert stock(sessions) == (6, 0)
+        assert repository(sessions).claim("restarted-worker") is None
+    finally:
+        if child.poll() is None:
+            child.kill()
+            child.wait(timeout=5)
+        child.stdout.close()
+
+
+def test_heartbeat_allows_processing_beyond_original_lease(sessions):
+    _, job_id = seed(sessions)
+    repo = repository(sessions)
+    repo.lease_seconds = 0.5
+    claim = repo.claim("long-running-worker")
+    with sessions() as session:
+        original_expiry = session.get(sessions.models.jobs, job_id).lease_expires_at
+
+    def prepare(_claim):
+        with sessions() as session:
+            session.execute(text("SELECT pg_sleep(0.8)"))
+            assert session.scalar(select(text("clock_timestamp()"))) > original_expiry
+
+    assert process_claim(repo, claim, prepare, renew_seconds=0.05) == "job_completed"
+    assert stock(sessions) == (6, 0)
