@@ -1,4 +1,4 @@
-.PHONY: up down ps logs test-stack-up test-stack-down
+.PHONY: up down ps logs test-stack-up test-stack-down cluster-up cluster-down cluster-smoke
 
 # Start the development stack and build its stub image.
 up:
@@ -23,3 +23,15 @@ test-stack-up:
 # Destroy only disposable test containers and their database volume.
 test-stack-down:
 	docker compose -f compose.yaml -f compose.test.yaml -p fulfillops-test down -v
+
+# Create or reuse the local fulfillops kind cluster.
+cluster-up:
+	./scripts/cluster-up.sh
+
+# Delete the local fulfillops kind cluster after a confirmation prompt.
+cluster-down:
+	./scripts/cluster-down.sh
+
+# Exercise the local NodePort and default dynamic storage provisioner.
+cluster-smoke:
+	./scripts/smoke-cluster.sh
