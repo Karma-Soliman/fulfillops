@@ -6,3 +6,4 @@
 2026-11-11 — Task 7: Argo CD GitOps — Codex (GPT-6) — generated pinned Argo CD install, least-privilege project and Application manifests, lifecycle/drift scripts, Make targets, and GitOps documentation; human review pending.
 2026-11-11 — Task 7b: Prometheus metrics collection — Codex (GPT-6) — generated Kubernetes and Compose scrape configurations, replica-level DNS discovery, pinned Prometheus deployment, query evidence script, Make targets, and image pin documentation; human review pending.
 2026-11-11 — Task 8: GitOps release and rollout drills — Codex (GPT-6) — generated Git PR release helpers, harmless rolling-update and broken-release recovery drills, evidence capture, and Make targets; human review pending.
+2026-11-11 — Task 4b: deliberate red-green supply-chain gate evidence — Codex (GPT-6) — added then removed vulnerable urllib3 1.26.4 with lockfile updates, verified local and CI Trivy red/green results, and recorded evidence; human review pending.
