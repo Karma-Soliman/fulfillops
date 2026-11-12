@@ -336,8 +336,10 @@ def test_only_one_worker_reclaims_expired_job(sessions):
         assert session.get(sessions.models.jobs, job_id).attempts == 2
 
 
+
 def test_killed_process_leaves_durable_recoverable_work(sessions):
-    import selectors
+    from queue import Queue
+    from threading import Thread
 
     _, job_id = seed(sessions)
     url = sessions.kw["bind"].url.render_as_string(hide_password=False)
@@ -357,18 +359,37 @@ assert claim is not None
 print('CLAIM_COMMITTED', flush=True)
 time.sleep(60)
 """
-    child = subprocess.Popen([sys.executable, "-c", code],
-                             env=dict(os.environ, DATABASE_URL=url),
-                             stdout=subprocess.PIPE, text=True)
+    child = subprocess.Popen(
+        [sys.executable, "-c", code],
+        env=dict(os.environ, DATABASE_URL=url),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    output = Queue()
+
+    def read_child_output():
+        output.put(child.stdout.readline().strip())
+
+    reader = Thread(target=read_child_output, daemon=True)
+    reader.start()
+
     try:
-        with selectors.DefaultSelector() as selector:
-            selector.register(child.stdout, selectors.EVENT_READ)
-            assert selector.select(timeout=10), "Child did not commit its claim"
-            assert child.stdout.readline().strip() == "CLAIM_COMMITTED"
+        try:
+            message = output.get(timeout=10)
+        except Exception:
+            stderr = child.stderr.read() if child.poll() is not None else ""
+            pytest.fail(f"Child did not commit its claim. stderr: {stderr}")
+
+        assert message == "CLAIM_COMMITTED"
+
         child.kill()
         child.wait(timeout=5)
+
         with sessions() as session:
             assert session.get(sessions.models.jobs, job_id).status == "processing"
+
         # Advance lease expiry in fixture SQL rather than slow wall-clock sleeps.
         expire(sessions, job_id)
         repo = repository(sessions)
@@ -377,11 +398,13 @@ time.sleep(60)
         assert repo.complete(recovered)
         assert not repo.complete(recovered)
         assert stock(sessions) == (6, 0)
+
     finally:
         if child.poll() is None:
             child.kill()
             child.wait(timeout=5)
         child.stdout.close()
+        child.stderr.close()
 
 
 def test_poison_processing_callback_reaches_durable_failure(sessions):
