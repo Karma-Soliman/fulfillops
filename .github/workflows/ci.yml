@@ -229,12 +229,18 @@ jobs:
           curl --fail --silent --show-error http://localhost:8080/health/live
           curl --fail --silent --show-error http://localhost:8080/health/ready
           curl --fail --silent --show-error http://localhost:8080/api/v1/catalog
-      - name: Full public contract checker (stub currently incomplete)
+      - name: Verify public contract checker path
+        run: |
+          test -f scripts/fulfillops_public_checker.py
+          echo "Found scripts/fulfillops_public_checker.py"
+      - name: Run public contract checker from scripts/ (stub currently incomplete)
         # TODO(remove before submission): blocking once the real API exists
         continue-on-error: true
         run: |
           set -o pipefail
-          python3 scripts/fulfillops_public_checker.py --base-url http://localhost:8080 --concurrency --stress 2>&1 | tee checker-output.txt
+          checker=scripts/fulfillops_public_checker.py
+          echo "Running $checker against the isolated test stack."
+          python3 "$checker" --base-url http://localhost:8080 --concurrency --stress 2>&1 | tee checker-output.txt
       - name: Upload checker output
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
