@@ -43,7 +43,7 @@ fi
 branch="release/$branch_suffix"
 
 if [[ "$mode" == image ]]; then
-  image_context="${IMAGE_CONTEXT:-infra/stub-app}"
+  image_context="${IMAGE_CONTEXT:-.}"
   image_tag="fulfillops:$value"
   architecture="$(docker info --format '{{.Architecture}}')"
   case "$architecture" in

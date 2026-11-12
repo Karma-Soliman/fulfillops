@@ -9,3 +9,4 @@
 2026-11-11 — Task 4b: deliberate red-green supply-chain gate evidence — Codex (GPT-6) — added then removed vulnerable urllib3 1.26.4 with lockfile updates, verified local and CI Trivy red/green results, and recorded evidence; human review pending.
 2026-11-12 — Stub fixes and canonical DATABASE_URL — Codex (GPT-6) — added a private Prometheus registry and direct-psycopg URL normalization in the stub, standardized app URLs on postgresql+psycopg://, and updated the integration contract; human review pending.
 2026-11-11 — Checker path clarification — Codex (GPT-6) — updated AGENTS.md and CI to use the checker and rollout probe under scripts/ and to fail early if the contract checker path is missing; human review pending.
+2026-11-12 — Real application integration Phase 1 — Codex (GPT-6) — generated the root multistage image, hashed dependency lock, Compose/CI/Kubernetes wiring, reset helper, and image-size evidence; human review pending.
