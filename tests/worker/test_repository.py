@@ -529,17 +529,27 @@ def test_worker_entry_point_completes_and_exits_on_sigterm(sessions):
     url = sessions.kw["bind"].url.render_as_string(hide_password=False)
     child = subprocess.Popen([sys.executable, "-m", "worker.main"],
                              cwd=Path(__file__).resolve().parents[2],
-                             env=dict(os.environ, DATABASE_URL=url),
+                             env=dict(os.environ, DATABASE_URL=url, WORKER_METRICS_PORT="0"),
                              stdout=subprocess.PIPE, text=True)
     try:
-        with selectors.DefaultSelector() as selector:
-            selector.register(child.stdout, selectors.EVENT_READ)
-            assert selector.select(timeout=10), "Worker did not report completion"
-            outcome = json.loads(child.stdout.readline())
-            assert outcome["event"] == "job_completed"
-            assert outcome["job_id"] == str(job_id)
+        from time import monotonic
+        deadline = monotonic() + 10
+        # Inspect the durable state while stdout is reserved for JSON log checks.
+        while monotonic() < deadline:
+            with sessions() as session:
+                if session.get(sessions.models.orders, order_id).status == "completed":
+                    break
+            import time
+            time.sleep(0.02)
+        else:
+            pytest.fail("Worker did not complete order")
         child.terminate()
         assert child.wait(timeout=5) == 0
+        logs = [json.loads(line) for line in child.stdout.read().splitlines()]
+        completed = [record for record in logs if record["event"] == "job_completed"]
+        assert len(completed) == 1 and completed[0]["job_id"] == str(job_id)
+        assert logs[-1]["event"] == "worker_stopped"
+        assert all("timestamp" in record and "level" in record for record in logs)
         with sessions() as session:
             assert session.get(sessions.models.orders, order_id).status == "completed"
         assert stock(sessions) == (6, 0)
@@ -565,4 +575,72 @@ def test_heartbeat_allows_processing_beyond_original_lease(sessions):
             assert session.scalar(select(text("clock_timestamp()"))) > original_expiry
 
     assert process_claim(repo, claim, prepare, renew_seconds=0.05) == "job_completed"
+    assert stock(sessions) == (6, 0)
+
+
+def test_metrics_track_committed_retry_and_completion_only(sessions):
+    import io
+    from worker.telemetry import Telemetry
+
+    _, job_id = seed(sessions)
+    telemetry = Telemetry("worker", stream=io.StringIO())
+    repo = repository(sessions)
+    repo.observer = telemetry.record
+    claim = repo.claim("worker")
+    assert repo.renew(claim)
+    assert repo.fail(claim)
+    make_retry_due(sessions, job_id)
+    claim = repo.claim("worker")
+    assert repo.complete(claim)
+    assert not repo.complete(claim)
+    assert not repo.fail(claim)
+    assert telemetry.registry.get_sample_value("fulfillops_worker_claims_total") == 2
+    assert telemetry.registry.get_sample_value("fulfillops_worker_retries_total") == 1
+    assert telemetry.registry.get_sample_value("fulfillops_worker_retries_scheduled_total") == 1
+    assert telemetry.registry.get_sample_value("fulfillops_worker_completed_total") == 1
+    assert telemetry.registry.get_sample_value("fulfillops_worker_lease_renewals_total") == 1
+    assert telemetry.registry.get_sample_value("fulfillops_orders_failed_total") == 0
+
+
+def test_terminal_crash_failure_metric_is_emitted_once(sessions):
+    import io
+    from worker.telemetry import Telemetry
+
+    _, job_id = seed(sessions)
+    telemetry = Telemetry("worker", stream=io.StringIO())
+    repo = repository(sessions)
+    repo.observer = telemetry.record
+    for _ in range(3):
+        assert repo.claim("worker")
+        expire(sessions, job_id)
+    assert repo.claim("reaper") is None
+    assert repo.claim("reaper") is None
+    assert telemetry.registry.get_sample_value("fulfillops_orders_failed_total") == 1
+    assert telemetry.registry.get_sample_value("fulfillops_worker_recoveries_total") == 2
+
+
+def test_rolled_back_claim_does_not_emit_metric(sessions):
+    import io
+    from worker.telemetry import Telemetry
+
+    seed(sessions)
+    telemetry = Telemetry("worker", stream=io.StringIO())
+    repo = repository(sessions)
+    repo.observer = telemetry.record
+    with pytest.raises(DBAPIError):
+        # The overly long identity fails only when ORM changes flush at commit.
+        repo.claim("x" * 129)
+    assert telemetry.registry.get_sample_value("fulfillops_worker_claims_total") == 0
+    assert telemetry.registry.get_sample_value("fulfillops_worker_retries_total") == 0
+
+
+def test_telemetry_failure_cannot_undo_committed_completion(sessions):
+    seed(sessions)
+    repo = repository(sessions)
+
+    def unavailable_observer(*_args, **_kwargs):
+        raise OSError("output unavailable")
+
+    repo.observer = unavailable_observer
+    assert repo.complete(repo.claim("worker"))
     assert stock(sessions) == (6, 0)
