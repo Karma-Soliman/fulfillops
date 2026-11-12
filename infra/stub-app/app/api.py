@@ -7,19 +7,30 @@ from contextlib import asynccontextmanager
 import psycopg
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
-from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    CollectorRegistry,
+    Counter,
+    Histogram,
+    generate_latest,
+)
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(), stream=__import__("sys").stdout
 )
 logger = logging.getLogger("fulfillops.stub")
+REGISTRY = CollectorRegistry()
 REQUESTS = Counter(
-    "fulfillops_http_requests_total", "HTTP requests", ("method", "route", "status")
+    "fulfillops_http_requests_total",
+    "HTTP requests",
+    ("method", "route", "status"),
+    registry=REGISTRY,
 )
 LATENCY = Histogram(
     "fulfillops_http_request_duration_seconds",
     "HTTP request latency",
     ("method", "route"),
+    registry=REGISTRY,
 )
 CATALOG = {
     "products": [
@@ -78,6 +89,7 @@ def ready():
             '{"status":"not_ready"}', status_code=503, media_type="application/json"
         )
     try:
+        database_url = database_url.replace("postgresql+psycopg://", "postgresql://", 1)
         with psycopg.connect(database_url, connect_timeout=1) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
@@ -100,4 +112,4 @@ def catalog():
 
 @app.get("/metrics")
 def metrics():
-    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+    return Response(generate_latest(REGISTRY), media_type=CONTENT_TYPE_LATEST)

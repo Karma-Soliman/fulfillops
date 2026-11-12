@@ -349,6 +349,7 @@ Job and order status updates must be transactional.
 All components must follow these rules:
 
 - PostgreSQL is the shared source of truth.
+- DATABASE_URL format: postgresql+psycopg://user:password@host:5432/dbname (SQLAlchemy + psycopg 3). Anything that connects with psycopg directly must strip the +psycopg suffix.
 - The API and worker must use the same database schema.
 - No component may use process-local state as the authoritative source for inventory, idempotency, or job ownership.
 - Database migrations must be committed to version control.
