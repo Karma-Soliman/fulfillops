@@ -7,6 +7,18 @@ def test_health_endpoints(client):
     assert response.status_code == 200
     assert response.json() == {"status": "ready"}
 
+def test_health_ready_when_database_unavailable(client, monkeypatch):
+    from api import main
+
+    def raise_database_error():
+        raise RuntimeError("Database unavailable")
+
+    monkeypatch.setattr(main, "SessionLocal", raise_database_error)
+
+    response = client.get("/health/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {"status": "not_ready"}
 
 def test_catalog(client):
     response = client.get("/api/v1/catalog")
