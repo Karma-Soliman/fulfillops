@@ -30,7 +30,7 @@ from urllib.parse import quote
 user = quote(os.environ["POSTGRES_USER"], safe="")
 password = quote(os.environ["POSTGRES_PASSWORD"], safe="")
 database = quote(os.environ["POSTGRES_DB"], safe="")
-print(f"postgresql://{user}:{password}@postgres:5432/{database}")
+print(f"postgresql+psycopg://{user}:{password}@postgres:5432/{database}")
 PY
 )"
 export DATABASE_URL
