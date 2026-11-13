@@ -14,6 +14,7 @@ metadata:
     app.kubernetes.io/component: migrate
 spec:
   backoffLimit: 4
+  ttlSecondsAfterFinished: 3600
   template:
     metadata:
       # Marks this pod as the migration workload.
@@ -21,7 +22,7 @@ spec:
         app.kubernetes.io/name: fulfillops
         app.kubernetes.io/component: migrate
     spec:
-      restartPolicy: OnFailure
+      restartPolicy: Never
       serviceAccountName: fulfillops-app
       automountServiceAccountToken: false
       # Uses the API's unprivileged pod identity and default seccomp profile.
