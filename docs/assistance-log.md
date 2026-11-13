@@ -11,3 +11,4 @@
 2026-11-11 — Checker path clarification — Codex (GPT-6) — updated AGENTS.md and CI to use the checker and rollout probe under scripts/ and to fail early if the contract checker path is missing; human review pending.
 2026-11-12 — Real application integration Phase 1 — Codex (GPT-6) — generated the root multistage image, hashed dependency lock, Compose/CI/Kubernetes wiring, reset helper, and image-size evidence; human review pending.
 2026-11-13 — Real app integration branch sync — Codex — merged latest main worker reliability changes and verified 50 tests, healthy worker telemetry, checker, and shutdown timing; human review pending.
+2026-11-13 — Ruff triage — Codex — identified and excluded the two vendored assessment Python tools from Ruff check/format, recorded remaining A/B-owned violations, and reviewed diffs without applying them; human review pending.
