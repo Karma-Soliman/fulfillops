@@ -21,7 +21,7 @@ services:
       context: infra/stub-app
     command: ["migrate"]
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       APP_ENV: dev
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
@@ -35,7 +35,7 @@ services:
       context: infra/stub-app
     command: ["api"]
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       APP_ENV: dev
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     read_only: true
@@ -63,7 +63,7 @@ services:
       context: infra/stub-app
     command: ["worker"]
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       APP_ENV: dev
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     read_only: true

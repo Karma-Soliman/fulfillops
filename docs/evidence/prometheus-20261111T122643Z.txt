@@ -1,0 +1,24 @@
+UTC timestamp: 2026-11-11T12:26:44Z
+Generating 250 catalog requests through the kind NodePort...
+Generated 250 successful catalog requests.
+Waiting 15 seconds for scrape samples...
+
+up by job and instance: up
+  {__name__="up", instance="10.244.1.35:8080", job="api"} = 1
+  {__name__="up", instance="10.244.1.36:9100", job="worker"} = 1
+  {__name__="up", instance="10.244.1.37:8080", job="api"} = 1
+  {__name__="up", instance="10.244.1.33:9100", job="worker"} = 1
+
+sum by (job) (up): sum by (job) (up)
+  {job="api"} = 2
+  {job="worker"} = 2
+
+request rate: sum(rate(fulfillops_http_requests_total[1m]))
+  {} = 2.1896214328194397
+
+p95 HTTP latency: histogram_quantile(0.95, sum by (le) (rate(fulfillops_http_request_duration_seconds_bucket[1m])))
+  {} = 0.02299283958710188
+
+worker heartbeat rate: sum(rate(fulfillops_worker_heartbeats_total[1m]))
+  {} = 1.0000277701097746
+Evidence saved to docs/evidence/prometheus-20261111T122643Z.txt
