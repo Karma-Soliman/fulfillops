@@ -1,4 +1,5 @@
 """Keep ownership alive during processing; commit effects only through repository."""
+
 import threading
 
 
@@ -19,7 +20,9 @@ def process_claim(repository, claim, process=None, renew_seconds=3, telemetry=No
             except Exception:
                 if telemetry is not None:
                     telemetry.errors.labels(operation="renew").inc()
-                    telemetry.log("lease_renewal_error", severity="ERROR", job_id=claim.job_id)
+                    telemetry.log(
+                        "lease_renewal_error", severity="ERROR", job_id=claim.job_id
+                    )
                 # stop all business updates and let expiry recover.
                 pass
             lost.set()
@@ -43,5 +46,8 @@ def process_claim(repository, claim, process=None, renew_seconds=3, telemetry=No
     try:
         return "job_completed" if repository.complete(claim) else "claim_lost"
     except RuntimeError:
-        return ("failure_recorded" if repository.fail(claim, "inventory_invariant_failed")
-                else "claim_lost")
+        return (
+            "failure_recorded"
+            if repository.fail(claim, "inventory_invariant_failed")
+            else "claim_lost"
+        )
