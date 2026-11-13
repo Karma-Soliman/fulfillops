@@ -1,0 +1,6 @@
+NAME                        DESIRED   CURRENT   READY   AGE    CONTAINERS   IMAGES                                                SELECTOR
+fulfillops-api-56b755f4f5   0         0         0       21m    api          fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4   app.kubernetes.io/component=api,app.kubernetes.io/name=fulfillops,pod-template-hash=56b755f4f5
+fulfillops-api-5d5f97df77   0         0         0       2d4h   api          fulfillops:b5b8c6ea281976ad99e743b372d5900f05155a55   app.kubernetes.io/component=api,app.kubernetes.io/name=fulfillops,pod-template-hash=5d5f97df77
+fulfillops-api-677dbf87fc   0         0         0       2d5h   api          fulfillops:b5b8c6ea281976ad99e743b372d5900f05155a55   app.kubernetes.io/component=api,app.kubernetes.io/name=fulfillops,pod-template-hash=677dbf87fc
+fulfillops-api-749c946d66   2         2         2       14m    api          fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4   app.kubernetes.io/component=api,app.kubernetes.io/name=fulfillops,pod-template-hash=749c946d66
+fulfillops-api-98c5758b8    0         0         0       49m    api          fulfillops:fd500c4622993edc33901af5ac01058b1669ecf0   app.kubernetes.io/component=api,app.kubernetes.io/name=fulfillops,pod-template-hash=98c5758b8

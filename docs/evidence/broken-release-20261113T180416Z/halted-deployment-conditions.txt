@@ -1,0 +1,2 @@
+Available status=True reason=MinimumReplicasAvailable message=Deployment has minimum availability.
+Progressing status=False reason=ProgressDeadlineExceeded message=ReplicaSet "fulfillops-api-6b6dc9f8d5" has timed out progressing.

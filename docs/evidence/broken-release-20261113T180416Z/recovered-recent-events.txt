@@ -1,0 +1,137 @@
+LAST SEEN   TYPE      REASON              OBJECT                                    MESSAGE
+39m         Normal    Scheduled           pod/fulfillops-migrate-8ngbh              Successfully assigned fulfillops/fulfillops-migrate-8ngbh to fulfillops-worker
+39m         Normal    SuccessfulCreate    job/fulfillops-migrate                    Created pod: fulfillops-migrate-8ngbh
+39m         Normal    Pulled              pod/fulfillops-migrate-8ngbh              Container image "postgres:16.10@sha256:21f6013073bc6b92830a2129570e2f5ec42a6c734b5a985a41e83aa58f54c3c1" already present on machine and can be accessed by the pod
+39m         Normal    Created             pod/fulfillops-migrate-8ngbh              Container created
+39m         Normal    Started             pod/fulfillops-migrate-8ngbh              Container started
+39m         Normal    Pulled              pod/fulfillops-migrate-8ngbh              Container image "fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4" already present on machine and can be accessed by the pod
+39m         Normal    Created             pod/fulfillops-migrate-8ngbh              Container created
+39m         Normal    Started             pod/fulfillops-migrate-8ngbh              Container started
+39m         Normal    Completed           job/fulfillops-migrate                    Job completed
+38m         Normal    ScalingReplicaSet   deployment/fulfillops-api                 Scaled up replica set fulfillops-api-56b755f4f5 from 0 to 1
+38m         Normal    ScalingReplicaSet   deployment/fulfillops-worker              Scaled up replica set fulfillops-worker-b56cc89df from 0 to 1
+38m         Normal    Pulled              pod/fulfillops-worker-b56cc89df-jx4rs     Container image "fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4" already present on machine and can be accessed by the pod
+38m         Normal    Started             pod/fulfillops-worker-b56cc89df-jx4rs     Container started
+38m         Warning   Unhealthy           pod/fulfillops-worker-b56cc89df-jx4rs     Readiness probe failed: Get "http://10.244.1.62:9100/health/live": dial tcp 10.244.1.62:9100: connect: connection refused
+38m         Normal    SuccessfulCreate    replicaset/fulfillops-worker-b56cc89df    Created pod: fulfillops-worker-b56cc89df-jx4rs
+38m         Normal    SuccessfulCreate    replicaset/fulfillops-api-56b755f4f5      Created pod: fulfillops-api-56b755f4f5-kddfv
+38m         Normal    Created             pod/fulfillops-worker-b56cc89df-jx4rs     Container created
+38m         Normal    Scheduled           pod/fulfillops-api-56b755f4f5-kddfv       Successfully assigned fulfillops/fulfillops-api-56b755f4f5-kddfv to fulfillops-worker
+38m         Normal    Scheduled           pod/fulfillops-worker-b56cc89df-jx4rs     Successfully assigned fulfillops/fulfillops-worker-b56cc89df-jx4rs to fulfillops-worker
+38m         Normal    Pulled              pod/fulfillops-api-56b755f4f5-kddfv       Container image "fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4" already present on machine and can be accessed by the pod
+38m         Normal    Created             pod/fulfillops-api-56b755f4f5-kddfv       Container created
+38m         Normal    Started             pod/fulfillops-api-56b755f4f5-kddfv       Container started
+38m         Normal    ScalingReplicaSet   deployment/fulfillops-worker              Scaled up replica set fulfillops-worker-b56cc89df from 1 to 2
+38m         Normal    ScalingReplicaSet   deployment/fulfillops-worker              Scaled down replica set fulfillops-worker-85cd598bc6 from 2 to 1
+38m         Normal    SuccessfulDelete    replicaset/fulfillops-worker-85cd598bc6   Deleted pod: fulfillops-worker-85cd598bc6-nv4d8
+38m         Normal    Scheduled           pod/fulfillops-worker-b56cc89df-62fwh     Successfully assigned fulfillops/fulfillops-worker-b56cc89df-62fwh to fulfillops-worker
+38m         Normal    Started             pod/fulfillops-worker-b56cc89df-62fwh     Container started
+38m         Warning   Unhealthy           pod/fulfillops-worker-b56cc89df-62fwh     Readiness probe failed: Get "http://10.244.1.64:9100/health/live": dial tcp 10.244.1.64:9100: connect: connection refused
+38m         Normal    Created             pod/fulfillops-worker-b56cc89df-62fwh     Container created
+38m         Normal    Pulled              pod/fulfillops-worker-b56cc89df-62fwh     Container image "fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4" already present on machine and can be accessed by the pod
+38m         Normal    SuccessfulCreate    replicaset/fulfillops-worker-b56cc89df    Created pod: fulfillops-worker-b56cc89df-62fwh
+38m         Normal    Killing             pod/fulfillops-worker-85cd598bc6-nv4d8    Stopping container worker
+38m         Normal    Scheduled           pod/fulfillops-api-56b755f4f5-rrxw7       Successfully assigned fulfillops/fulfillops-api-56b755f4f5-rrxw7 to fulfillops-worker
+38m         Normal    ScalingReplicaSet   deployment/fulfillops-worker              Scaled down replica set fulfillops-worker-85cd598bc6 from 1 to 0
+38m         Normal    Pulled              pod/fulfillops-api-56b755f4f5-rrxw7       Container image "fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4" already present on machine and can be accessed by the pod
+38m         Normal    SuccessfulCreate    replicaset/fulfillops-api-56b755f4f5      Created pod: fulfillops-api-56b755f4f5-rrxw7
+38m         Normal    Started             pod/fulfillops-api-56b755f4f5-rrxw7       Container started
+38m         Normal    SuccessfulDelete    replicaset/fulfillops-worker-85cd598bc6   Deleted pod: fulfillops-worker-85cd598bc6-tdwjr
+38m         Normal    Created             pod/fulfillops-api-56b755f4f5-rrxw7       Container created
+38m         Normal    ScalingReplicaSet   deployment/fulfillops-api                 Scaled down replica set fulfillops-api-98c5758b8 from 2 to 1
+38m         Normal    SuccessfulDelete    replicaset/fulfillops-api-98c5758b8       Deleted pod: fulfillops-api-98c5758b8-mwskr
+38m         Normal    Killing             pod/fulfillops-api-98c5758b8-mwskr        Stopping container api
+38m         Normal    Killing             pod/fulfillops-worker-85cd598bc6-tdwjr    Stopping container worker
+38m         Normal    Killing             pod/fulfillops-api-98c5758b8-6x5sq        Stopping container api
+38m         Normal    SuccessfulDelete    replicaset/fulfillops-api-98c5758b8       Deleted pod: fulfillops-api-98c5758b8-6x5sq
+38m         Normal    ScalingReplicaSet   deployment/fulfillops-api                 Scaled down replica set fulfillops-api-98c5758b8 from 1 to 0
+35m         Normal    Killing             pod/fulfillops-api-56b755f4f5-kddfv       Stopping container api
+35m         Normal    Scheduled           pod/fulfillops-api-56b755f4f5-zl6jw       Successfully assigned fulfillops/fulfillops-api-56b755f4f5-zl6jw to fulfillops-worker
+35m         Normal    SuccessfulDelete    replicaset/fulfillops-api-56b755f4f5      Deleted pod: fulfillops-api-56b755f4f5-kddfv
+35m         Normal    ScalingReplicaSet   deployment/fulfillops-api                 Scaled up replica set fulfillops-api-56b755f4f5 from 1 to 2
+35m         Normal    Created             pod/fulfillops-api-56b755f4f5-zl6jw       Container created
+35m         Normal    SuccessfulCreate    replicaset/fulfillops-api-56b755f4f5      Created pod: fulfillops-api-56b755f4f5-zl6jw
+35m         Normal    Pulled              pod/fulfillops-api-56b755f4f5-zl6jw       Container image "fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4" already present on machine and can be accessed by the pod
+35m         Normal    Started             pod/fulfillops-api-56b755f4f5-zl6jw       Container started
+31m         Normal    SuccessfulCreate    job/fulfillops-migrate                    Created pod: fulfillops-migrate-msnw4
+31m         Normal    Scheduled           pod/fulfillops-migrate-msnw4              Successfully assigned fulfillops/fulfillops-migrate-msnw4 to fulfillops-worker
+31m         Normal    Pulled              pod/fulfillops-migrate-msnw4              Container image "postgres:16.10@sha256:21f6013073bc6b92830a2129570e2f5ec42a6c734b5a985a41e83aa58f54c3c1" already present on machine and can be accessed by the pod
+31m         Normal    Created             pod/fulfillops-migrate-msnw4              Container created
+31m         Normal    Pulled              pod/fulfillops-migrate-msnw4              Container image "fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4" already present on machine and can be accessed by the pod
+31m         Normal    Created             pod/fulfillops-migrate-msnw4              Container created
+31m         Normal    Started             pod/fulfillops-migrate-msnw4              Container started
+31m         Normal    Started             pod/fulfillops-migrate-msnw4              Container started
+31m         Normal    Completed           job/fulfillops-migrate                    Job completed
+31m         Normal    ScalingReplicaSet   deployment/fulfillops-api                 Scaled up replica set fulfillops-api-749c946d66 from 0 to 1
+31m         Normal    SuccessfulCreate    replicaset/fulfillops-api-749c946d66      Created pod: fulfillops-api-749c946d66-zv6g5
+31m         Normal    Scheduled           pod/fulfillops-api-749c946d66-zv6g5       Successfully assigned fulfillops/fulfillops-api-749c946d66-zv6g5 to fulfillops-worker
+31m         Normal    Pulled              pod/fulfillops-api-749c946d66-zv6g5       Container image "fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4" already present on machine and can be accessed by the pod
+31m         Normal    Created             pod/fulfillops-api-749c946d66-zv6g5       Container created
+31m         Normal    Started             pod/fulfillops-api-749c946d66-zv6g5       Container started
+31m         Normal    SuccessfulCreate    replicaset/fulfillops-api-749c946d66      Created pod: fulfillops-api-749c946d66-j8p7k
+31m         Normal    ScalingReplicaSet   deployment/fulfillops-api                 Scaled up replica set fulfillops-api-749c946d66 from 1 to 2
+31m         Normal    Started             pod/fulfillops-api-749c946d66-j8p7k       Container started
+31m         Normal    Created             pod/fulfillops-api-749c946d66-j8p7k       Container created
+31m         Normal    Pulled              pod/fulfillops-api-749c946d66-j8p7k       Container image "fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4" already present on machine and can be accessed by the pod
+31m         Normal    Scheduled           pod/fulfillops-api-749c946d66-j8p7k       Successfully assigned fulfillops/fulfillops-api-749c946d66-j8p7k to fulfillops-worker
+31m         Normal    Killing             pod/fulfillops-api-56b755f4f5-zl6jw       Stopping container api
+31m         Normal    ScalingReplicaSet   deployment/fulfillops-api                 Scaled down replica set fulfillops-api-56b755f4f5 from 2 to 1
+31m         Normal    SuccessfulDelete    replicaset/fulfillops-api-56b755f4f5      Deleted pod: fulfillops-api-56b755f4f5-zl6jw
+31m         Normal    SuccessfulDelete    replicaset/fulfillops-api-56b755f4f5      Deleted pod: fulfillops-api-56b755f4f5-rrxw7
+31m         Normal    ScalingReplicaSet   deployment/fulfillops-api                 Scaled down replica set fulfillops-api-56b755f4f5 from 1 to 0
+31m         Normal    Killing             pod/fulfillops-api-56b755f4f5-rrxw7       Stopping container api
+14m         Normal    Scheduled           pod/fulfillops-migrate-p8t76              Successfully assigned fulfillops/fulfillops-migrate-p8t76 to fulfillops-worker
+14m         Normal    Pulled              pod/fulfillops-migrate-p8t76              Container image "postgres:16.10@sha256:21f6013073bc6b92830a2129570e2f5ec42a6c734b5a985a41e83aa58f54c3c1" already present on machine and can be accessed by the pod
+14m         Normal    Started             pod/fulfillops-migrate-p8t76              Container started
+14m         Normal    Created             pod/fulfillops-migrate-p8t76              Container created
+14m         Normal    Started             pod/fulfillops-migrate-p8t76              Container started
+14m         Normal    Pulled              pod/fulfillops-migrate-p8t76              Container image "fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4" already present on machine and can be accessed by the pod
+14m         Normal    Created             pod/fulfillops-migrate-p8t76              Container created
+14m         Normal    SuccessfulCreate    job/fulfillops-migrate                    Created pod: fulfillops-migrate-p8t76
+14m         Normal    Completed           job/fulfillops-migrate                    Job completed
+14m         Normal    SuccessfulCreate    replicaset/fulfillops-api-66f5695b9c      Created pod: fulfillops-api-66f5695b9c-k5ncs
+14m         Normal    Created             pod/fulfillops-api-66f5695b9c-k5ncs       Container created
+14m         Normal    Pulled              pod/fulfillops-api-66f5695b9c-k5ncs       Container image "fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4" already present on machine and can be accessed by the pod
+14m         Normal    Scheduled           pod/fulfillops-api-66f5695b9c-k5ncs       Successfully assigned fulfillops/fulfillops-api-66f5695b9c-k5ncs to fulfillops-worker
+14m         Normal    Started             pod/fulfillops-api-66f5695b9c-k5ncs       Container started
+14m         Normal    ScalingReplicaSet   deployment/fulfillops-api                 Scaled up replica set fulfillops-api-66f5695b9c from 0 to 1
+14m         Normal    ScalingReplicaSet   deployment/fulfillops-api                 Scaled down replica set fulfillops-api-749c946d66 from 2 to 1
+14m         Normal    Killing             pod/fulfillops-api-749c946d66-j8p7k       Stopping container api
+14m         Normal    ScalingReplicaSet   deployment/fulfillops-api                 Scaled up replica set fulfillops-api-66f5695b9c from 1 to 2
+14m         Normal    Scheduled           pod/fulfillops-api-66f5695b9c-87ndw       Successfully assigned fulfillops/fulfillops-api-66f5695b9c-87ndw to fulfillops-worker
+14m         Normal    Pulled              pod/fulfillops-api-66f5695b9c-87ndw       Container image "fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4" already present on machine and can be accessed by the pod
+14m         Normal    Created             pod/fulfillops-api-66f5695b9c-87ndw       Container created
+14m         Normal    Started             pod/fulfillops-api-66f5695b9c-87ndw       Container started
+14m         Normal    SuccessfulCreate    replicaset/fulfillops-api-66f5695b9c      Created pod: fulfillops-api-66f5695b9c-87ndw
+14m         Normal    SuccessfulDelete    replicaset/fulfillops-api-749c946d66      Deleted pod: fulfillops-api-749c946d66-j8p7k
+13m         Normal    ScalingReplicaSet   deployment/fulfillops-api                 Scaled down replica set fulfillops-api-749c946d66 from 1 to 0
+13m         Normal    Killing             pod/fulfillops-api-749c946d66-zv6g5       Stopping container api
+13m         Normal    SuccessfulDelete    replicaset/fulfillops-api-749c946d66      Deleted pod: fulfillops-api-749c946d66-zv6g5
+9m55s       Normal    SuccessfulCreate    job/fulfillops-migrate                    Created pod: fulfillops-migrate-h8zbw
+9m55s       Normal    Scheduled           pod/fulfillops-migrate-h8zbw              Successfully assigned fulfillops/fulfillops-migrate-h8zbw to fulfillops-worker
+9m54s       Normal    Started             pod/fulfillops-migrate-h8zbw              Container started
+9m54s       Normal    Started             pod/fulfillops-migrate-h8zbw              Container started
+9m54s       Normal    Pulled              pod/fulfillops-migrate-h8zbw              Container image "postgres:16.10@sha256:21f6013073bc6b92830a2129570e2f5ec42a6c734b5a985a41e83aa58f54c3c1" already present on machine and can be accessed by the pod
+9m54s       Normal    Created             pod/fulfillops-migrate-h8zbw              Container created
+9m54s       Normal    Pulled              pod/fulfillops-migrate-h8zbw              Container image "fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4" already present on machine and can be accessed by the pod
+9m54s       Normal    Created             pod/fulfillops-migrate-h8zbw              Container created
+9m52s       Normal    Completed           job/fulfillops-migrate                    Job completed
+9m46s       Normal    SuccessfulCreate    replicaset/fulfillops-api-6b6dc9f8d5      Created pod: fulfillops-api-6b6dc9f8d5-lm8nb
+9m46s       Normal    Scheduled           pod/fulfillops-api-6b6dc9f8d5-lm8nb       Successfully assigned fulfillops/fulfillops-api-6b6dc9f8d5-lm8nb to fulfillops-worker
+9m46s       Normal    Pulled              pod/fulfillops-api-6b6dc9f8d5-lm8nb       Container image "fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4" already present on machine and can be accessed by the pod
+9m46s       Normal    Created             pod/fulfillops-api-6b6dc9f8d5-lm8nb       Container created
+9m46s       Normal    ScalingReplicaSet   deployment/fulfillops-api                 Scaled up replica set fulfillops-api-6b6dc9f8d5 from 0 to 1
+9m46s       Normal    Started             pod/fulfillops-api-6b6dc9f8d5-lm8nb       Container started
+4m40s       Warning   Unhealthy           pod/fulfillops-api-6b6dc9f8d5-lm8nb       Readiness probe failed: HTTP probe failed with statuscode: 404
+65s         Normal    Pulled              pod/fulfillops-migrate-hdxfk              Container image "postgres:16.10@sha256:21f6013073bc6b92830a2129570e2f5ec42a6c734b5a985a41e83aa58f54c3c1" already present on machine and can be accessed by the pod
+65s         Normal    SuccessfulCreate    job/fulfillops-migrate                    Created pod: fulfillops-migrate-hdxfk
+65s         Normal    Created             pod/fulfillops-migrate-hdxfk              Container created
+65s         Normal    Started             pod/fulfillops-migrate-hdxfk              Container started
+65s         Normal    Scheduled           pod/fulfillops-migrate-hdxfk              Successfully assigned fulfillops/fulfillops-migrate-hdxfk to fulfillops-worker
+64s         Normal    Pulled              pod/fulfillops-migrate-hdxfk              Container image "fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4" already present on machine and can be accessed by the pod
+64s         Normal    Created             pod/fulfillops-migrate-hdxfk              Container created
+64s         Normal    Started             pod/fulfillops-migrate-hdxfk              Container started
+62s         Normal    Completed           job/fulfillops-migrate                    Job completed
+57s         Normal    Killing             pod/fulfillops-api-6b6dc9f8d5-lm8nb       Stopping container api
+57s         Normal    SuccessfulDelete    replicaset/fulfillops-api-6b6dc9f8d5      Deleted pod: fulfillops-api-6b6dc9f8d5-lm8nb
+57s         Normal    ScalingReplicaSet   deployment/fulfillops-api                 Scaled down replica set fulfillops-api-6b6dc9f8d5 from 1 to 0
