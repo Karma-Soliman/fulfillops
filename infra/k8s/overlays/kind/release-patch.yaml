@@ -9,7 +9,7 @@ spec:
   template:
     metadata:
       annotations:
-        fulfillops.io/release-note: "initial"
+        fulfillops.io/release-note: "rolling-20261113T174258Z"
     spec:
       containers:
         - name: api
