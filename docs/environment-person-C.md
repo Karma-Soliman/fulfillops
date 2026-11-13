@@ -7,7 +7,8 @@ Recorded on 2026-11-10. Teammates with a different setup should add their own se
 
 | Date       | Commit  | Image                                                                     | Digest                                                                  | CI run                                                               |
 | ---------- | ------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| 2026-11-11 | 7287fd9 | ghcr.io/karma-soliman/fulfillops:7287fd9d098f190e388fb368935626b134de22ef | sha256:d02e181fa820d64e1fadfe98d5dcc5c05e39dc1d91f007b04f80056a018968a3 | https://github.com/Karma-Soliman/fulfillops/actions/runs/42992492491 |
+| 2026-11-11 | 7287fd9 | ghcr.io/karma-soliman/fulfillops:7287fd9d098f190e388fb368935626b134de22ef (stub) | sha256:d02e181fa820d64e1fadfe98d5dcc5c05e39dc1d91f007b04f80056a018968a3 | https://github.com/Karma-Soliman/fulfillops/actions/runs/42992492491 |
+| 2026-11-13 | 1bf6538 | ghcr.io/karma-soliman/fulfillops:1bf6538abb11361b004f9a3f0337f16fbbf58516 (real application) | sha256:9d9b5f718526e619e5b0205ffd2c6ab309e8bcffaaafd6fac9ac7c70dde08e8f | https://github.com/Karma-Soliman/fulfillops/actions/runs/43480807610 |
 
 ## Host
 

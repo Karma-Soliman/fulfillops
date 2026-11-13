@@ -1,0 +1,1 @@
+PROBE duration=30.0s total=120 success=120 failures=0 file=docs/evidence/rolling-update-20261113T174258Z/rolling_update_probe.csv
