@@ -10,8 +10,8 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
-# Use the selected context for local architecture; the default is the temporary stub app.
-IMAGE_CONTEXT="${IMAGE_CONTEXT:-infra/stub-app}"
+# Use the selected context for local architecture; the default is the real application at repo root.
+IMAGE_CONTEXT="${IMAGE_CONTEXT:-.}"
 IMAGE_SHA="$(git rev-parse HEAD)"
 IMAGE_REF="fulfillops:$IMAGE_SHA"
 

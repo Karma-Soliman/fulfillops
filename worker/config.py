@@ -29,13 +29,24 @@ class Config:
         maximum = float(os.getenv("WORKER_BACKOFF_MAX_SECONDS", "8"))
         poll = float(os.getenv("WORKER_POLL_INTERVAL_SECONDS", "0.5"))
         import math
-        if (not all(math.isfinite(x) for x in (renew, base, maximum, poll))
-            or not 0 < renew < lease or not 0 < base <= maximum or poll <= 0):
+
+        if (
+            not all(math.isfinite(x) for x in (renew, base, maximum, poll))
+            or not 0 < renew < lease
+            or not 0 < base <= maximum
+            or poll <= 0
+        ):
             raise ValueError("Invalid renewal, backoff or polling configuration")
         if int(os.getenv("WORKER_MAX_ATTEMPTS", "3")) != 3:
             raise ValueError("The agreed worker attempt limit is three")
         port = int(os.getenv("WORKER_METRICS_PORT", "9100"))
         level = os.getenv("LOG_LEVEL", "INFO").upper()
-        if not 0 <= port <= 65535 or level not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
+        if not 0 <= port <= 65535 or level not in {
+            "DEBUG",
+            "INFO",
+            "WARNING",
+            "ERROR",
+            "CRITICAL",
+        }:
             raise ValueError("Invalid worker metrics port or log level")
         return cls(url, lease, pool, renew, base, maximum, poll, port, level)

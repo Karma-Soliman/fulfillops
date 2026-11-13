@@ -349,7 +349,8 @@ Job and order status updates must be transactional.
 All components must follow these rules:
 
 - PostgreSQL is the shared source of truth.
-- DATABASE_URL format: postgresql+psycopg://user:password@host:5432/dbname (SQLAlchemy + psycopg 3). Anything that connects with psycopg directly must strip the +psycopg suffix.
+- `DATABASE_URL` uses `postgresql+psycopg://user:password@host:5432/dbname` for SQLAlchemy with psycopg 3.
+- Code connecting with `psycopg.connect()` directly must strip the `+psycopg` driver suffix first.
 - The API and worker must use the same database schema.
 - No component may use process-local state as the authoritative source for inventory, idempotency, or job ownership.
 - Database migrations must be committed to version control.
@@ -359,6 +360,21 @@ All components must follow these rules:
 - All timestamps used for leases and scheduling must be handled consistently using database time.
 - The API must not return an accepted order before its transaction commits.
 - Worker retries must not create additional orders, jobs, or inventory reservations.
+
+### Runtime commands, seeding, and reset
+
+- API: `uvicorn api.main:app --host 0.0.0.0 --port 8080 --workers 1 --no-access-log`.
+- Worker: `python -m worker.main`; its health and metrics listener uses port 9100.
+- Migrations: `alembic upgrade head`. The initial Alembic revision creates the schema and seeds
+  the catalogue and inventory. Alembic's version table records the revision, so the seed runs
+  once on a fresh database and is not a recurring startup seed command.
+- Migrations have no advisory lock. Only one migration runner is configured at a time: the single
+  Compose `migrate` service or the single Argo CD hook Job. Do not start multiple migration runners
+  concurrently; if that deployment model changes, add a migration lock before scaling it out.
+- To recreate only the disposable Compose test database and bring the test stack back up, run
+  `make reset-test-data`. It requires `COMPOSE_PROJECT_NAME=fulfillops-test` and `APP_ENV=test`,
+  uses `down -v` only with the `fulfillops-test` Compose project, and defaults to host port 18080.
+  Use `make test-stack-down` when finished.
 
 ## 5. Responsibility Summary
 

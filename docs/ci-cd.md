@@ -6,19 +6,18 @@ and manual dispatches run the quality pipeline.
 ```mermaid
 flowchart LR
   lint[Lint] --> publish[Publish on main]
-  test[Deployment contract tests] --> publish
+  test[Full test suite] --> publish
   build[Build image once] --> scan[Trivy scan] --> publish
   build --> sbom[Generate SBOM] --> publish
   build --> contract[Compose smoke and checker] --> publish
 ```
 
-Lint checks the Python paths and every repository Dockerfile. Tests verify the stub's liveness,
-readiness behavior, migration marker, exact catalog and request metric using a disposable
-PostgreSQL service. Build produces one `linux/amd64` image archive; scan, SBOM, and contract jobs
-download and load that same archive, so their results describe the image that can be published.
-The contract job starts the isolated Compose test project and checks its HTTP endpoints. The full
-public checker is temporarily allowed to fail because this placeholder does not implement orders
-and inventory. Remove its `continue-on-error` before submitting the real API.
+Lint checks the configured Python paths and every repository Dockerfile. The test job runs the
+full API, worker, and integration suite against a disposable PostgreSQL service after applying
+Alembic migrations; stub-only deployment tests are excluded. Build produces one `linux/amd64`
+image archive; scan, SBOM, and contract jobs download and load that same archive, so their results
+describe the image that can be published. The contract job starts the isolated Compose test
+project and runs the public checker as a blocking check.
 
 ## Vulnerability policy
 

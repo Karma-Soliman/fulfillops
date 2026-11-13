@@ -16,9 +16,9 @@ services:
     restart: unless-stopped
 
   migrate:
-    image: ${FULFILLOPS_IMAGE:-fulfillops-stub:dev}
+    image: ${FULFILLOPS_IMAGE:-fulfillops:dev}
     build:
-      context: infra/stub-app
+      context: .
     command: ["migrate"]
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
@@ -30,9 +30,9 @@ services:
     restart: "no"
 
   api:
-    image: ${FULFILLOPS_IMAGE:-fulfillops-stub:dev}
+    image: ${FULFILLOPS_IMAGE:-fulfillops:dev}
     build:
-      context: infra/stub-app
+      context: .
     command: ["api"]
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
@@ -58,14 +58,21 @@ services:
       replicas: 2
 
   worker:
-    image: ${FULFILLOPS_IMAGE:-fulfillops-stub:dev}
+    image: ${FULFILLOPS_IMAGE:-fulfillops:dev}
     build:
-      context: infra/stub-app
+      context: .
     command: ["worker"]
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       APP_ENV: dev
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-5}
+      WORKER_LEASE_SECONDS: ${WORKER_LEASE_SECONDS:-10}
+      WORKER_MAX_ATTEMPTS: ${WORKER_MAX_ATTEMPTS:-3}
+      WORKER_RENEW_INTERVAL_SECONDS: ${WORKER_RENEW_INTERVAL_SECONDS:-3}
+      WORKER_BACKOFF_BASE_SECONDS: ${WORKER_BACKOFF_BASE_SECONDS:-1}
+      WORKER_BACKOFF_MAX_SECONDS: ${WORKER_BACKOFF_MAX_SECONDS:-8}
+      WORKER_POLL_INTERVAL_SECONDS: ${WORKER_POLL_INTERVAL_SECONDS:-0.5}
     read_only: true
     tmpfs:
       - /tmp

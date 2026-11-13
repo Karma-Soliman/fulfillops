@@ -1,4 +1,4 @@
-﻿import uuid
+import uuid
 
 from sqlalchemy import (
     Boolean,
@@ -31,8 +31,10 @@ class Product(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     updated_at: Mapped[DateTime] = mapped_column(
-        DateTime(timezone=True), nullable=False,
-        server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
     __table_args__ = (
@@ -51,13 +53,19 @@ class Inventory(Base):
         Integer, nullable=False, server_default=text("0")
     )
     updated_at: Mapped[DateTime] = mapped_column(
-        DateTime(timezone=True), nullable=False,
-        server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
     __table_args__ = (
-        CheckConstraint("quantity_on_hand >= 0", name="ck_inventory_on_hand_nonnegative"),
-        CheckConstraint("quantity_reserved >= 0", name="ck_inventory_reserved_nonnegative"),
+        CheckConstraint(
+            "quantity_on_hand >= 0", name="ck_inventory_on_hand_nonnegative"
+        ),
+        CheckConstraint(
+            "quantity_reserved >= 0", name="ck_inventory_reserved_nonnegative"
+        ),
         CheckConstraint(
             "quantity_reserved <= quantity_on_hand",
             name="ck_inventory_reserved_lte_on_hand",
@@ -80,8 +88,10 @@ class Order(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     updated_at: Mapped[DateTime] = mapped_column(
-        DateTime(timezone=True), nullable=False,
-        server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
     __table_args__ = (
@@ -111,12 +121,8 @@ class OrderItem(Base):
 
     __table_args__ = (
         UniqueConstraint("order_id", "sku", name="uq_order_items_order_sku"),
-        CheckConstraint(
-            "quantity BETWEEN 1 AND 200", name="ck_order_items_quantity"
-        ),
-        CheckConstraint(
-            "unit_price_cents > 0", name="ck_order_items_price_positive"
-        ),
+        CheckConstraint("quantity BETWEEN 1 AND 200", name="ck_order_items_quantity"),
+        CheckConstraint("unit_price_cents > 0", name="ck_order_items_price_positive"),
     )
 
 
@@ -166,8 +172,10 @@ class Job(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     updated_at: Mapped[DateTime] = mapped_column(
-        DateTime(timezone=True), nullable=False,
-        server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
     __table_args__ = (
@@ -197,5 +205,3 @@ class Job(Base):
         Index("ix_jobs_status_available_at", "status", "available_at"),
         Index("ix_jobs_status_lease_expires_at", "status", "lease_expires_at"),
     )
-
-

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+expected_project="fulfillops-test"
+if [[ "${COMPOSE_PROJECT_NAME:-}" != "$expected_project" ]]; then
+  echo "Refusing test reset: COMPOSE_PROJECT_NAME must be $expected_project." >&2
+  exit 2
+fi
+if [[ "${APP_ENV:-}" != "test" ]]; then
+  echo "Refusing test reset: APP_ENV must be test." >&2
+  exit 2
+fi
+
+export LB_HOST_PORT="${LB_HOST_PORT:-18080}"
+compose=(docker compose -f compose.yaml -f compose.test.yaml --project-name "$COMPOSE_PROJECT_NAME")
+"${compose[@]}" down -v
+"${compose[@]}" up -d --build
