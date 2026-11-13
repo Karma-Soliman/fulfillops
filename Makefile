@@ -85,7 +85,7 @@ prom-ui:
 	@echo "Prometheus UI: http://localhost:9090"
 	kubectl -n fulfillops port-forward svc/prometheus 9090:9090
 
-# Create a GitOps release PR for an image SHA or release note; pass arguments through ARGS.
+# Create an image release with `make release ARGS="--image <full-sha>"` or a note with `make release ARGS='--note "text"'`.
 release:
 	./scripts/release.sh $(ARGS)
 

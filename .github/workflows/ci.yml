@@ -16,7 +16,7 @@ permissions:
 
 env:
   IMAGE_CONTEXT: .
-  PYTHON_PATHS: api worker tests scripts infra/stub-app/app
+  PYTHON_PATHS: api worker tests scripts
   IMAGE_TAG: fulfillops:${{ github.sha }}
 
 jobs:
@@ -71,10 +71,10 @@ jobs:
         run: python -m pip install --disable-pip-version-check --require-hashes -r requirements.lock
       - name: Apply database migrations
         run: alembic upgrade head
-      - name: Run full test suite (excluding temporary stub-only tests)
+      - name: Run full test suite
         id: pytest
         run: |
-          python -m pytest tests/ --ignore=tests/deployment/test_stub_contract.py --junitxml=junit.xml
+          python -m pytest tests/ --junitxml=junit.xml
       - name: Upload JUnit results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

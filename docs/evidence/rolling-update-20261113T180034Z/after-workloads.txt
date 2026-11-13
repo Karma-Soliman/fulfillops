@@ -1,0 +1,27 @@
+NAME                                READY   UP-TO-DATE   AVAILABLE   AGE    CONTAINERS   IMAGES                                                                                            SELECTOR
+deployment.apps/fulfillops-api      2/2     2            2           2d5h   api          fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4                                               app.kubernetes.io/component=api,app.kubernetes.io/name=fulfillops
+deployment.apps/fulfillops-worker   2/2     2            2           2d5h   worker       fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4                                               app.kubernetes.io/component=worker,app.kubernetes.io/name=fulfillops
+deployment.apps/prometheus          1/1     1            1           2d5h   prometheus   prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06   app.kubernetes.io/component=prometheus,app.kubernetes.io/name=fulfillops
+
+NAME                                           DESIRED   CURRENT   READY   AGE    CONTAINERS   IMAGES                                                                                            SELECTOR
+replicaset.apps/fulfillops-api-56b755f4f5      0         0         0       25m    api          fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4                                               app.kubernetes.io/component=api,app.kubernetes.io/name=fulfillops,pod-template-hash=56b755f4f5
+replicaset.apps/fulfillops-api-5d5f97df77      0         0         0       2d4h   api          fulfillops:b5b8c6ea281976ad99e743b372d5900f05155a55                                               app.kubernetes.io/component=api,app.kubernetes.io/name=fulfillops,pod-template-hash=5d5f97df77
+replicaset.apps/fulfillops-api-66f5695b9c      2         2         2       16s    api          fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4                                               app.kubernetes.io/component=api,app.kubernetes.io/name=fulfillops,pod-template-hash=66f5695b9c
+replicaset.apps/fulfillops-api-677dbf87fc      0         0         0       2d5h   api          fulfillops:b5b8c6ea281976ad99e743b372d5900f05155a55                                               app.kubernetes.io/component=api,app.kubernetes.io/name=fulfillops,pod-template-hash=677dbf87fc
+replicaset.apps/fulfillops-api-749c946d66      0         0         0       17m    api          fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4                                               app.kubernetes.io/component=api,app.kubernetes.io/name=fulfillops,pod-template-hash=749c946d66
+replicaset.apps/fulfillops-api-98c5758b8       0         0         0       52m    api          fulfillops:fd500c4622993edc33901af5ac01058b1669ecf0                                               app.kubernetes.io/component=api,app.kubernetes.io/name=fulfillops,pod-template-hash=98c5758b8
+replicaset.apps/fulfillops-worker-85cd598bc6   0         0         0       52m    worker       fulfillops:fd500c4622993edc33901af5ac01058b1669ecf0                                               app.kubernetes.io/component=worker,app.kubernetes.io/name=fulfillops,pod-template-hash=85cd598bc6
+replicaset.apps/fulfillops-worker-b56cc89df    2         2         2       25m    worker       fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4                                               app.kubernetes.io/component=worker,app.kubernetes.io/name=fulfillops,pod-template-hash=b56cc89df
+replicaset.apps/fulfillops-worker-bd6587b9f    0         0         0       2d5h   worker       fulfillops:b5b8c6ea281976ad99e743b372d5900f05155a55                                               app.kubernetes.io/component=worker,app.kubernetes.io/name=fulfillops,pod-template-hash=bd6587b9f
+replicaset.apps/prometheus-85c6b5d58d          1         1         1       2d5h   prometheus   prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06   app.kubernetes.io/component=prometheus,app.kubernetes.io/name=fulfillops,pod-template-hash=85c6b5d58d
+
+NAME                                    READY   STATUS        RESTARTS   AGE    IP            NODE                NOMINATED NODE   READINESS GATES
+pod/fulfillops-api-66f5695b9c-87ndw     1/1     Running       0          9s     10.244.1.72   fulfillops-worker   <none>           <none>
+pod/fulfillops-api-66f5695b9c-k5ncs     1/1     Running       0          16s    10.244.1.71   fulfillops-worker   <none>           <none>
+pod/fulfillops-api-749c946d66-j8p7k     1/1     Terminating   0          17m    10.244.1.69   fulfillops-worker   <none>           <none>
+pod/fulfillops-api-749c946d66-zv6g5     1/1     Terminating   0          17m    10.244.1.68   fulfillops-worker   <none>           <none>
+pod/fulfillops-migrate-p8t76            0/1     Completed     0          24s    10.244.1.70   fulfillops-worker   <none>           <none>
+pod/fulfillops-worker-b56cc89df-62fwh   1/1     Running       0          24m    10.244.1.64   fulfillops-worker   <none>           <none>
+pod/fulfillops-worker-b56cc89df-jx4rs   1/1     Running       0          25m    10.244.1.62   fulfillops-worker   <none>           <none>
+pod/postgres-0                          1/1     Running       0          2d5h   10.244.1.31   fulfillops-worker   <none>           <none>
+pod/prometheus-85c6b5d58d-z8dx2         1/1     Running       0          2d5h   10.244.1.39   fulfillops-worker   <none>           <none>

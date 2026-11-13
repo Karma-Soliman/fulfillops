@@ -80,6 +80,13 @@ Build and load the desired image, update the image tag in
 merge to `main`, Argo CD reconciles the new revision. Use `make argocd-refresh` to request an
 immediate hard refresh instead of waiting for its normal polling interval.
 
+For an image SHA, run `./scripts/release.sh --image <full-commit-sha>`, or through Make as
+`make release ARGS="--image <full-commit-sha>"`. The script refuses to build unless that SHA is
+exactly the current `HEAD`, and checks its timestamped release branch before building. For a
+release note, use `./scripts/release.sh --note "text"` or
+`make release ARGS='--note "text"'`. Arguments belong after `ARGS=` because Make parses its own
+options before it runs the target.
+
 `kubectl rollout undo`, `argocd app rollback`, or a manual patch is not the final fix: automated
 self-heal can revert a live-only change, and Git would still describe the previous state. Make the
 corrective change through a reviewed Git commit so Git and the cluster converge on the same desired

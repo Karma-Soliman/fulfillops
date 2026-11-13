@@ -1,0 +1,294 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"argoproj.io/v1alpha1","kind":"Application","metadata":{"annotations":{},"name":"fulfillops","namespace":"argocd"},"spec":{"destination":{"namespace":"fulfillops","server":"https://kubernetes.default.svc"},"project":"fulfillops","source":{"path":"infra/k8s/overlays/kind","repoURL":"https://github.com/Karma-Soliman/fulfillops.git","targetRevision":"main"},"syncPolicy":{"automated":{"prune":true,"selfHeal":true},"retry":{"backoff":{"duration":"10s","factor":2,"maxDuration":"2m"},"limit":3},"syncOptions":["CreateNamespace=true"]}}}
+  creationTimestamp: "2026-11-11T12:08:30Z"
+  generation: 666
+  name: fulfillops
+  namespace: argocd
+  resourceVersion: "134186"
+  uid: d8173af3-9303-4b5f-abb3-71637e140a24
+spec:
+  destination:
+    namespace: fulfillops
+    server: https://kubernetes.default.svc
+  project: fulfillops
+  source:
+    path: infra/k8s/overlays/kind
+    repoURL: https://github.com/Karma-Soliman/fulfillops.git
+    targetRevision: main
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m
+      limit: 3
+    syncOptions:
+    - CreateNamespace=true
+status:
+  controllerNamespace: argocd
+  health:
+    lastTransitionTime: "2026-11-13T18:16:55Z"
+    status: Healthy
+  history:
+  - deployStartedAt: "2026-11-11T12:21:40Z"
+    deployedAt: "2026-11-11T12:21:53Z"
+    id: 1
+    initiatedBy:
+      automated: true
+    revision: 9a8f2707c778cd924b59d50378cf4894b88b8b0b
+    source:
+      path: infra/k8s/overlays/kind
+      repoURL: https://github.com/Karma-Soliman/fulfillops.git
+      targetRevision: main
+  - deployStartedAt: "2026-11-11T13:18:25Z"
+    deployedAt: "2026-11-11T13:18:38Z"
+    id: 2
+    initiatedBy:
+      automated: true
+    revision: df61a1d26b70482e82d6551e0068bbedd4c06ed2
+    source:
+      path: infra/k8s/overlays/kind
+      repoURL: https://github.com/Karma-Soliman/fulfillops.git
+      targetRevision: main
+  - deployStartedAt: "2026-11-13T14:51:37Z"
+    deployedAt: "2026-11-13T14:51:51Z"
+    id: 3
+    initiatedBy:
+      automated: true
+    revision: e8a802a24e18231cbe4c2a07ce0928832c3a2511
+    source:
+      path: infra/k8s/overlays/kind
+      repoURL: https://github.com/Karma-Soliman/fulfillops.git
+      targetRevision: main
+  - deployStartedAt: "2026-11-13T17:10:54Z"
+    deployedAt: "2026-11-13T17:11:08Z"
+    id: 4
+    initiatedBy:
+      automated: true
+    revision: e7ed6e0677bc0ff228701a07193847295ead02b3
+    source:
+      path: infra/k8s/overlays/kind
+      repoURL: https://github.com/Karma-Soliman/fulfillops.git
+      targetRevision: main
+  - deployStartedAt: "2026-11-13T17:12:11Z"
+    deployedAt: "2026-11-13T17:12:23Z"
+    id: 5
+    initiatedBy:
+      automated: true
+    revision: cee416c3d063b8a43c07808a91b8a53ca931aeba
+    source:
+      path: infra/k8s/overlays/kind
+      repoURL: https://github.com/Karma-Soliman/fulfillops.git
+      targetRevision: main
+  - deployStartedAt: "2026-11-13T17:38:43Z"
+    deployedAt: "2026-11-13T17:38:57Z"
+    id: 6
+    initiatedBy:
+      automated: true
+    revision: b2e614ae807e18140ada020ac67e1a5965bbad69
+    source:
+      path: infra/k8s/overlays/kind
+      repoURL: https://github.com/Karma-Soliman/fulfillops.git
+      targetRevision: main
+  - deployStartedAt: "2026-11-13T17:46:03Z"
+    deployedAt: "2026-11-13T17:46:17Z"
+    id: 7
+    initiatedBy:
+      automated: true
+    revision: c24784443474be83e9d46f0562905fc45e08fe4a
+    source:
+      path: infra/k8s/overlays/kind
+      repoURL: https://github.com/Karma-Soliman/fulfillops.git
+      targetRevision: main
+  - deployStartedAt: "2026-11-13T18:03:29Z"
+    deployedAt: "2026-11-13T18:03:42Z"
+    id: 8
+    initiatedBy:
+      automated: true
+    revision: 4c85863607a0332f5862e47b47cdf1d433748c2a
+    source:
+      path: infra/k8s/overlays/kind
+      repoURL: https://github.com/Karma-Soliman/fulfillops.git
+      targetRevision: main
+  - deployStartedAt: "2026-11-13T18:07:53Z"
+    deployedAt: "2026-11-13T18:08:06Z"
+    id: 9
+    initiatedBy:
+      automated: true
+    revision: 779751bae7320190fb0378cf448c67c7bf86889e
+    source:
+      path: infra/k8s/overlays/kind
+      repoURL: https://github.com/Karma-Soliman/fulfillops.git
+      targetRevision: main
+  - deployStartedAt: "2026-11-13T18:16:42Z"
+    deployedAt: "2026-11-13T18:16:55Z"
+    id: 10
+    initiatedBy:
+      automated: true
+    revision: 1bf6538abb11361b004f9a3f0337f16fbbf58516
+    source:
+      path: infra/k8s/overlays/kind
+      repoURL: https://github.com/Karma-Soliman/fulfillops.git
+      targetRevision: main
+  operationState:
+    finishedAt: "2026-11-13T18:16:55Z"
+    message: successfully synced (all tasks run)
+    operation:
+      initiatedBy:
+        automated: true
+      retry:
+        backoff:
+          duration: 10s
+          factor: 2
+          maxDuration: 2m
+        limit: 3
+      sync:
+        autoHealAttemptsCount: 1
+        prune: true
+        resources:
+        - group: apps
+          kind: Deployment
+          name: fulfillops-api
+        - group: batch
+          kind: Job
+          name: fulfillops-migrate
+        revision: 1bf6538abb11361b004f9a3f0337f16fbbf58516
+        source:
+          path: infra/k8s/overlays/kind
+          repoURL: https://github.com/Karma-Soliman/fulfillops.git
+          targetRevision: main
+        syncOptions:
+        - CreateNamespace=true
+    phase: Succeeded
+    startedAt: "2026-11-13T18:16:55Z"
+    syncResult:
+      resources:
+      - group: apps
+        hookPhase: Running
+        images:
+        - fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4
+        kind: Deployment
+        message: deployment.apps/fulfillops-api unchanged
+        name: fulfillops-api
+        namespace: fulfillops
+        status: Synced
+        syncPhase: Sync
+        version: v1
+      revision: 1bf6538abb11361b004f9a3f0337f16fbbf58516
+      source:
+        path: infra/k8s/overlays/kind
+        repoURL: https://github.com/Karma-Soliman/fulfillops.git
+        targetRevision: main
+  reconciledAt: "2026-11-13T18:16:55Z"
+  resourceHealthSource: appTree
+  resources:
+  - kind: ConfigMap
+    name: fulfillops-config
+    namespace: fulfillops
+    status: Synced
+    version: v1
+  - kind: ConfigMap
+    name: prometheus-config-5kgd8gk4d8
+    namespace: fulfillops
+    status: Synced
+    version: v1
+  - kind: Namespace
+    name: fulfillops
+    status: Synced
+    version: v1
+  - kind: Service
+    name: fulfillops-api
+    namespace: fulfillops
+    status: Synced
+    version: v1
+  - kind: Service
+    name: fulfillops-api-metrics
+    namespace: fulfillops
+    status: Synced
+    version: v1
+  - kind: Service
+    name: fulfillops-worker-metrics
+    namespace: fulfillops
+    status: Synced
+    version: v1
+  - kind: Service
+    name: postgres
+    namespace: fulfillops
+    status: Synced
+    version: v1
+  - kind: Service
+    name: prometheus
+    namespace: fulfillops
+    status: Synced
+    version: v1
+  - kind: ServiceAccount
+    name: fulfillops-app
+    namespace: fulfillops
+    status: Synced
+    version: v1
+  - group: apps
+    kind: Deployment
+    name: fulfillops-api
+    namespace: fulfillops
+    status: Synced
+    syncWave: 2
+    version: v1
+  - group: apps
+    kind: Deployment
+    name: fulfillops-worker
+    namespace: fulfillops
+    status: Synced
+    syncWave: 2
+    version: v1
+  - group: apps
+    kind: Deployment
+    name: prometheus
+    namespace: fulfillops
+    status: Synced
+    syncWave: 2
+    version: v1
+  - group: apps
+    kind: StatefulSet
+    name: postgres
+    namespace: fulfillops
+    status: Synced
+    version: v1
+  - group: batch
+    hook: true
+    kind: Job
+    name: fulfillops-migrate
+    namespace: fulfillops
+    requiresPruning: true
+    syncWave: 1
+    version: v1
+  - group: policy
+    kind: PodDisruptionBudget
+    name: fulfillops-api
+    namespace: fulfillops
+    status: Synced
+    version: v1
+  sourceHydrator: {}
+  sourceType: Kustomize
+  summary:
+    images:
+    - fulfillops:0d757e3e472b7be4332b5f985922156177ccafa4
+    - postgres:16.10@sha256:21f6013073bc6b92830a2129570e2f5ec42a6c734b5a985a41e83aa58f54c3c1
+    - prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06
+  sync:
+    comparedTo:
+      destination:
+        namespace: fulfillops
+        server: https://kubernetes.default.svc
+      source:
+        path: infra/k8s/overlays/kind
+        repoURL: https://github.com/Karma-Soliman/fulfillops.git
+        targetRevision: main
+    revision: 1bf6538abb11361b004f9a3f0337f16fbbf58516
+    status: Synced

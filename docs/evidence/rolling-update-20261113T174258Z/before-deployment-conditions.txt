@@ -1,0 +1,2 @@
+Progressing status=True reason=NewReplicaSetAvailable message=ReplicaSet "fulfillops-api-56b755f4f5" has successfully progressed.
+Available status=True reason=MinimumReplicasAvailable message=Deployment has minimum availability.
