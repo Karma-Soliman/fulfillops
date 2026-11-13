@@ -9,4 +9,4 @@ patches:
 images:
 - name: fulfillops
   newName: fulfillops
-  newTag: b5b8c6ea281976ad99e743b372d5900f05155a55
+  newTag: fd500c4622993edc33901af5ac01058b1669ecf0
