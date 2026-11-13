@@ -267,11 +267,13 @@ def test_prometheus_metrics(client):
     for metric in required_metrics:
         assert metric in metrics
 
+    assert "fulfillops_orders_created_total 1.0" in metrics
     assert "fulfillops_orders_failed_total 1.0" in metrics
     assert "fulfillops_worker_retries_total 2.0" in metrics
 
-    # Scraping again must not increment database-backed metrics.
+    # Scraping again must not change database-backed metrics.
     second_response = client.get("/metrics")
     assert second_response.status_code == 200
+    assert "fulfillops_orders_created_total 1.0" in second_response.text
     assert "fulfillops_orders_failed_total 1.0" in second_response.text
     assert "fulfillops_worker_retries_total 2.0" in second_response.text

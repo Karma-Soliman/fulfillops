@@ -7,7 +7,6 @@ from pydantic import ValidationError
 from sqlalchemy import select, text
 
 from api.database import SessionLocal
-from api.metrics import orders_created
 from api.models import (
     IdempotencyKey,
     Inventory,
@@ -126,8 +125,6 @@ async def create_order(
 
     # Perform idempotency, stock reservation and order creation
     # in one database transaction.
-    new_order_created = False
-
     with SessionLocal() as db:
         with db.begin():
             # Serialize requests using the same idempotency key.
@@ -206,7 +203,6 @@ async def create_order(
                 db.flush()
 
                 order_id = order.id
-                new_order_created = True
 
                 # Reserve stock and save price snapshots.
                 for sku, quantity in quantities.items():
@@ -243,10 +239,6 @@ async def create_order(
                 )
 
         # The transaction has committed successfully here.
-
-    # Count only genuinely new, successfully committed orders.
-    if new_order_created:
-        orders_created.inc()
 
     return {
         "order_id": str(order_id),

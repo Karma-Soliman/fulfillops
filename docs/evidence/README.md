@@ -22,3 +22,16 @@ These files were generated before the real application image was deployed. They 
 `rolling-update-20261113T174258Z/` is retained to document the first real-app rollout attempt. Its probe passed 120/120, but the script exited before after-snapshots and summary generation due to the strict-mode Argo status parser bug fixed in PR #26. See the complete rerun above.
 
 The complete rolling-update drill records the pre- and post-rollout Kubernetes and Argo CD state, ReplicaSets, events, and a 30-second readiness probe CSV. The broken-release drill records the failed rollout and its recovery through Git and Argo CD. The standalone worker test artifacts under `worker-20261113T092847Z-7e0a2f/` are real application test evidence rather than stub evidence.
+
+## Gate 1 - API idempotency and transactional stock reservation
+
+`gate1-idempotency-20261113.txt` records a reproducible proof against the Docker Compose test stack, with two healthy API replicas behind the nginx load balancer.
+
+Run `python scripts/gate1_idempotency_demo.py` with the isolated `fulfillops-test` stack running and its database clean.
+
+The script verifies:
+- Eight simultaneous requests using the same idempotency key create one order and reserve stock once.
+- Two competing requests with different keys cannot oversell inventory.
+- Replaying the original request after restarting one API replica returns the original order ID without creating duplicates.
+
+Database snapshots are captured before and after each stage.

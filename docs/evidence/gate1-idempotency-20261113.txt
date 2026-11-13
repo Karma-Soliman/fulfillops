@@ -1,0 +1,129 @@
+FulfillOps Gate 1 idempotency proof
+Started: 2026-11-13T18:10:30.597678+00:00
+Project: fulfillops-test
+Load balancer: http://127.0.0.1:18080
+Both API replicas are healthy.
+Load balancer readiness: HTTP 200.
+
+--- INITIAL DATABASE STATE ---
+{
+  "orders": 0,
+  "jobs": 0,
+  "idempotency_keys": 0,
+  "inventory": [
+    {
+      "sku": "KIT-100",
+      "on_hand": 7,
+      "reserved": 0
+    },
+    {
+      "sku": "PACK-300",
+      "on_hand": 5,
+      "reserved": 0
+    },
+    {
+      "sku": "PART-200",
+      "on_hand": 12,
+      "reserved": 0
+    }
+  ]
+}
+
+TEST 1: Eight simultaneous same-key requests
+Request 1: HTTP 202, {'order_id': '83538e8c-cd4c-481c-bdaa-66d1b8745797', 'status': 'queued'}
+Request 2: HTTP 202, {'order_id': '83538e8c-cd4c-481c-bdaa-66d1b8745797', 'status': 'queued'}
+Request 3: HTTP 202, {'order_id': '83538e8c-cd4c-481c-bdaa-66d1b8745797', 'status': 'queued'}
+Request 4: HTTP 202, {'order_id': '83538e8c-cd4c-481c-bdaa-66d1b8745797', 'status': 'queued'}
+Request 5: HTTP 202, {'order_id': '83538e8c-cd4c-481c-bdaa-66d1b8745797', 'status': 'queued'}
+Request 6: HTTP 202, {'order_id': '83538e8c-cd4c-481c-bdaa-66d1b8745797', 'status': 'queued'}
+Request 7: HTTP 202, {'order_id': '83538e8c-cd4c-481c-bdaa-66d1b8745797', 'status': 'queued'}
+Request 8: HTTP 202, {'order_id': '83538e8c-cd4c-481c-bdaa-66d1b8745797', 'status': 'queued'}
+
+--- DATABASE AFTER SAME-KEY TEST ---
+{
+  "orders": 1,
+  "jobs": 1,
+  "idempotency_keys": 1,
+  "inventory": [
+    {
+      "sku": "KIT-100",
+      "on_hand": 7,
+      "reserved": 1
+    },
+    {
+      "sku": "PACK-300",
+      "on_hand": 5,
+      "reserved": 0
+    },
+    {
+      "sku": "PART-200",
+      "on_hand": 12,
+      "reserved": 0
+    }
+  ]
+}
+PASS: all 8 requests returned order 83538e8c-cd4c-481c-bdaa-66d1b8745797
+
+TEST 2: Competing different-key requests
+Request 1: HTTP 202, {'order_id': '1ad141bd-25ea-4bcf-a31e-7047342b714d', 'status': 'queued'}
+Request 2: HTTP 409, {'error': {'code': 'OUT_OF_STOCK', 'message': 'Not enough items available.'}}
+
+--- DATABASE AFTER COMPETING-KEY TEST ---
+{
+  "orders": 2,
+  "jobs": 2,
+  "idempotency_keys": 2,
+  "inventory": [
+    {
+      "sku": "KIT-100",
+      "on_hand": 7,
+      "reserved": 5
+    },
+    {
+      "sku": "PACK-300",
+      "on_hand": 5,
+      "reserved": 0
+    },
+    {
+      "sku": "PART-200",
+      "on_hand": 12,
+      "reserved": 0
+    }
+  ]
+}
+PASS: exactly one competing request succeeded.
+
+TEST 3: Restart one API replica and replay original request
+Restarting API container 2908dfed4a6d
+Both API replicas are healthy.
+Load balancer readiness: HTTP 200.
+Replay: HTTP 202, {'order_id': '83538e8c-cd4c-481c-bdaa-66d1b8745797', 'status': 'queued'}
+
+--- FINAL DATABASE STATE ---
+{
+  "orders": 2,
+  "jobs": 2,
+  "idempotency_keys": 2,
+  "inventory": [
+    {
+      "sku": "KIT-100",
+      "on_hand": 7,
+      "reserved": 5
+    },
+    {
+      "sku": "PACK-300",
+      "on_hand": 5,
+      "reserved": 0
+    },
+    {
+      "sku": "PART-200",
+      "on_hand": 12,
+      "reserved": 0
+    }
+  ]
+}
+
+PASS: replay returned the original order ID.
+PASS: replay created no duplicate order, job, or reservation.
+
+GATE 1 RESULT: ALL CHECKS PASSED
