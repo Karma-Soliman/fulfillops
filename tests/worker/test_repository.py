@@ -59,11 +59,15 @@ def sessions(request):
         factory.models = models.classes
         factory.evidence_dir = None
         if os.getenv("WORKER_EVIDENCE_DIR"):
-            factory.evidence_dir = Path(os.environ["WORKER_EVIDENCE_DIR"]) / request.node.name
+            factory.evidence_dir = (
+                Path(os.environ["WORKER_EVIDENCE_DIR"]) / request.node.name
+            )
             factory.evidence_dir.mkdir(parents=True, exist_ok=False)
-        artifact_dir = (request.getfixturevalue("tmp_path")
-                        if factory.evidence_dir is not None and "tmp_path" in request.fixturenames
-                        else None)
+        artifact_dir = (
+            request.getfixturevalue("tmp_path")
+            if factory.evidence_dir is not None and "tmp_path" in request.fixturenames
+            else None
+        )
         yield factory
     finally:
         try:
@@ -71,9 +75,12 @@ def sessions(request):
                 capture_snapshot(factory, "final")
                 if artifact_dir is not None:
                     import shutil
+
                     for artifact in artifact_dir.iterdir():
                         if artifact.is_file() and artifact.suffix in {".log", ".prom"}:
-                            shutil.copyfile(artifact, factory.evidence_dir / artifact.name)
+                            shutil.copyfile(
+                                artifact, factory.evidence_dir / artifact.name
+                            )
         finally:
             isolated.dispose()
             try:
@@ -92,17 +99,47 @@ def capture_snapshot(sessions, stage, **observations):
 
     m = sessions.models
     with sessions() as session:
-        jobs = session.execute(select(m.jobs.id, m.jobs.order_id, m.jobs.status,
-                                      m.jobs.attempts, m.jobs.max_attempts,
-                                      m.jobs.available_at, m.jobs.locked_by,
-                                      m.jobs.lease_expires_at, m.jobs.last_error)).mappings().all()
-        orders = session.execute(select(m.orders.id, m.orders.status,
-                                        m.orders.total_cents)).mappings().all()
-        inventory = session.execute(select(m.inventory.sku, m.inventory.quantity_on_hand,
-                                           m.inventory.quantity_reserved)).mappings().all()
-    state = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "stage": stage,
-             "observations": observations, "jobs": [dict(row) for row in jobs], "orders": [dict(row) for row in orders],
-             "inventory": [dict(row) for row in inventory]}
+        jobs = (
+            session.execute(
+                select(
+                    m.jobs.id,
+                    m.jobs.order_id,
+                    m.jobs.status,
+                    m.jobs.attempts,
+                    m.jobs.max_attempts,
+                    m.jobs.available_at,
+                    m.jobs.locked_by,
+                    m.jobs.lease_expires_at,
+                    m.jobs.last_error,
+                )
+            )
+            .mappings()
+            .all()
+        )
+        orders = (
+            session.execute(select(m.orders.id, m.orders.status, m.orders.total_cents))
+            .mappings()
+            .all()
+        )
+        inventory = (
+            session.execute(
+                select(
+                    m.inventory.sku,
+                    m.inventory.quantity_on_hand,
+                    m.inventory.quantity_reserved,
+                )
+            )
+            .mappings()
+            .all()
+        )
+    state = {
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "stage": stage,
+        "observations": observations,
+        "jobs": [dict(row) for row in jobs],
+        "orders": [dict(row) for row in orders],
+        "inventory": [dict(row) for row in inventory],
+    }
     with (sessions.evidence_dir / "database-snapshots.jsonl").open("a") as output:
         output.write(json.dumps(state, default=str) + "\n")
 
@@ -518,7 +555,9 @@ def test_poison_processing_callback_reaches_durable_failure(sessions):
     assert repo.claim("fourth") is None
     if sessions.evidence_dir is not None:
         (sessions.evidence_dir / "poison-worker.log").write_text(logs.getvalue())
-        (sessions.evidence_dir / "poison-worker.prom").write_bytes(generate_latest(telemetry.registry))
+        (sessions.evidence_dir / "poison-worker.prom").write_bytes(
+            generate_latest(telemetry.registry)
+        )
     with sessions() as session:
         job = session.get(sessions.models.jobs, job_id)
         assert (job.status, job.attempts, job.last_error) == (
@@ -901,7 +940,9 @@ def test_two_real_workers_expose_health_and_recover_killed_peer(sessions, tmp_pa
                 with urlopen(base + "/metrics", timeout=2) as response:
                     metrics = response.read().decode()
                     assert "fulfillops_worker_claims_total" in metrics
-                    (tmp_path / f"metrics-before-worker-{index}.prom").write_text(metrics)
+                    (tmp_path / f"metrics-before-worker-{index}.prom").write_text(
+                        metrics
+                    )
 
             def both_claimed():
                 with sessions() as session:
@@ -915,9 +956,12 @@ def test_two_real_workers_expose_health_and_recover_killed_peer(sessions, tmp_pa
             children[0].kill()
             children[0].wait(timeout=3)
             capture_snapshot(
-                sessions, "worker_killed", pid=children[0].pid,
+                sessions,
+                "worker_killed",
+                pid=children[0].pid,
                 exit_code=children[0].returncode,
             )
+
         # Inventory lock released. Survivor finishes and recovers its peer after
         # natural lease expiry; no fixture SQL advances lease_expires_at.
         def all_completed():
@@ -985,8 +1029,12 @@ def test_sigterm_during_active_completion_finishes_without_claiming_more(
         assert child.wait(timeout=5) == 0
         elapsed = monotonic() - started
         assert elapsed < 8
-        capture_snapshot(sessions, "graceful_shutdown", elapsed_seconds=elapsed,
-                         exit_code=child.returncode)
+        capture_snapshot(
+            sessions,
+            "graceful_shutdown",
+            elapsed_seconds=elapsed,
+            exit_code=child.returncode,
+        )
         assert stock(sessions) == (6, 1)
         with sessions() as session:
             assert sorted(job.status for job in session.scalars(select(Job))) == [

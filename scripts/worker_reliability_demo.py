@@ -1,4 +1,5 @@
 """Collect real worker reliability evidence using existing isolated test scenarios."""
+
 import argparse
 from datetime import datetime, timezone
 import json
@@ -28,16 +29,22 @@ def validate_target(environment):
         url = make_url(raw)
     except Exception:
         raise ValueError("Provide a valid TEST_DATABASE_URL") from None
-    if (url.drivername != "postgresql+psycopg"
+    if (
+        url.drivername != "postgresql+psycopg"
         or not (url.database or "").startswith("fulfillops_test")
-        or url.host not in {"127.0.0.1", "localhost", "::1"}):
-        raise ValueError("Requires local postgresql+psycopg and a dedicated fulfillops_test* database")
+        or url.host not in {"127.0.0.1", "localhost", "::1"}
+    ):
+        raise ValueError(
+            "Requires local postgresql+psycopg and a dedicated fulfillops_test* database"
+        )
     return url
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, help="New evidence directory; must not already exist")
+    parser.add_argument(
+        "--output", type=Path, help="New evidence directory; must not already exist"
+    )
     args = parser.parse_args()
     try:
         url = validate_target(os.environ)
@@ -45,19 +52,39 @@ def main():
         parser.error(str(error))
     root = Path(__file__).resolve().parents[1]
     started = datetime.now(timezone.utc)
-    output = (args.output or root / "docs" / "evidence" /
-              f"worker-{started.strftime('%Y%m%dT%H%M%SZ')}-{uuid4().hex[:6]}").resolve()
+    output = (
+        args.output
+        or root
+        / "docs"
+        / "evidence"
+        / f"worker-{started.strftime('%Y%m%dT%H%M%SZ')}-{uuid4().hex[:6]}"
+    ).resolve()
     output.mkdir(parents=True, exist_ok=False)
-    command = [sys.executable, "-m", "pytest", "-q", "--tb=short",
-               f"--junitxml={output / 'results.xml'}"]
+    command = [
+        sys.executable,
+        "-m",
+        "pytest",
+        "-q",
+        "--tb=short",
+        f"--junitxml={output / 'results.xml'}",
+    ]
     command.extend(f"tests/worker/test_repository.py::{name}" for name in SCENARIOS)
     environment = dict(os.environ, WORKER_EVIDENCE_DIR=str(output), APP_ENV="test")
-    result = subprocess.run(command, cwd=root, env=environment,
-                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    result = subprocess.run(
+        command,
+        cwd=root,
+        env=environment,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
 
     def redact(content):
-        secrets = [os.environ["TEST_DATABASE_URL"],
-                   url.render_as_string(hide_password=False), url.password]
+        secrets = [
+            os.environ["TEST_DATABASE_URL"],
+            url.render_as_string(hide_password=False),
+            url.password,
+        ]
         for secret in sorted((s for s in secrets if s), key=len, reverse=True):
             content = content.replace(secret, "[REDACTED]")
         return content
@@ -70,19 +97,35 @@ def main():
     cases = []
     if (output / "results.xml").exists():
         for case in ET.parse(output / "results.xml").iter("testcase"):
-            status = next((tag for tag in ("failure", "error", "skipped")
-                           if case.find(tag) is not None), "passed")
+            status = next(
+                (
+                    tag
+                    for tag in ("failure", "error", "skipped")
+                    if case.find(tag) is not None
+                ),
+                "passed",
+            )
             cases.append({"name": case.get("name"), "status": status})
-    success = (result.returncode == 0 and len(cases) == len(SCENARIOS)
-               and all(case["status"] == "passed" for case in cases))
-    revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
-    changes = subprocess.check_output(["git", "status", "--porcelain"], cwd=root, text=True)
+    success = (
+        result.returncode == 0
+        and len(cases) == len(SCENARIOS)
+        and all(case["status"] == "passed" for case in cases)
+    )
+    revision = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=root, text=True
+    ).strip()
+    changes = subprocess.check_output(
+        ["git", "status", "--porcelain"], cwd=root, text=True
+    )
     summary = {
         "started_utc": started.isoformat(),
         "finished_utc": datetime.now(timezone.utc).isoformat(),
-        "git_revision": revision, "working_tree_status": changes.splitlines(),
-        "python_version": sys.version.split()[0], "status": "passed" if success else "failed",
-        "pytest_exit_code": result.returncode, "scenarios": cases,
+        "git_revision": revision,
+        "working_tree_status": changes.splitlines(),
+        "python_version": sys.version.split()[0],
+        "status": "passed" if success else "failed",
+        "pytest_exit_code": result.returncode,
+        "scenarios": cases,
         "limitations": [
             "Local Python processes and real PostgreSQL; not a container or Kubernetes drill.",
             "Crash-recovery scenario uses four-second leases and natural expiry.",
