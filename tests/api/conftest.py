@@ -1,10 +1,8 @@
-import os
-
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete
 
-from api.database import Base, engine
+from api.database import engine
 from api.main import app
 from api.models import (
     IdempotencyKey,
@@ -21,9 +19,7 @@ def reset_test_database():
     database_name = engine.url.database
 
     if database_name != "fulfillops_test":
-        pytest.fail(
-            f"Tests must use fulfillops_test, not {database_name}"
-        )
+        pytest.fail(f"Tests must use fulfillops_test, not {database_name}")
 
     with engine.begin() as connection:
         connection.execute(delete(IdempotencyKey))

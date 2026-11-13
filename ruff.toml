@@ -1,0 +1,5 @@
+# vendored assessment tools, kept byte-identical to the instructor pack
+extend-exclude = [
+    "scripts/fulfillops_public_checker.py",
+    "scripts/fulfillops_rollout_probe.py",
+]

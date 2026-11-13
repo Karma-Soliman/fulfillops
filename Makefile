@@ -1,6 +1,6 @@
-.PHONY: up down ps logs test-stack-up test-stack-down cluster-up cluster-down cluster-smoke k8s-render k8s-apply k8s-status k8s-delete argocd-install argocd-bootstrap argocd-refresh argocd-ui drill-drift prom-evidence prom-ui release drill-rollout drill-broken
+.PHONY: up down ps logs test-stack-up test-stack-down reset-test-data cluster-up cluster-down cluster-smoke k8s-render k8s-apply k8s-status k8s-delete argocd-install argocd-bootstrap argocd-refresh argocd-ui drill-drift prom-evidence prom-ui release drill-rollout drill-broken
 
-# Start the development stack and build its stub image.
+# Start the development stack and build the real application image.
 up:
 	docker compose up -d --build
 
@@ -23,6 +23,10 @@ test-stack-up:
 # Destroy only disposable test containers and their database volume.
 test-stack-down:
 	docker compose -f compose.yaml -f compose.test.yaml -p fulfillops-test down -v
+
+# Recreate only the isolated fulfillops-test database and stack.
+reset-test-data:
+	COMPOSE_PROJECT_NAME=fulfillops-test APP_ENV=test ./scripts/reset-test-data
 
 # Create or reuse the local fulfillops kind cluster.
 cluster-up:

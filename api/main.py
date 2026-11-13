@@ -22,6 +22,7 @@ app.include_router(orders_router)
 
 # HTTP request metrics middleware
 
+
 @app.middleware("http")
 async def collect_http_metrics(request: Request, call_next):
     start_time = time.perf_counter()
@@ -46,6 +47,7 @@ async def collect_http_metrics(request: Request, call_next):
 
 # Standard error responses
 
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
     detail = exc.detail
@@ -68,7 +70,10 @@ def get_migration_heads():
     config = Config("alembic.ini")
     script = ScriptDirectory.from_config(config)
     return set(script.get_heads())
+
+
 # Health endpoints
+
 
 @app.get("/health/live")
 def health_live():
@@ -81,9 +86,9 @@ def health_ready():
         with SessionLocal() as db:
             db.execute(text("SELECT 1"))
 
-        result = db.execute(
-            text("SELECT version_num FROM alembic_version")
-        ).scalars().all()
+        result = (
+            db.execute(text("SELECT version_num FROM alembic_version")).scalars().all()
+        )
 
         if set(result) != get_migration_heads():
             raise RuntimeError("Database migrations are not up to date.")
@@ -102,13 +107,12 @@ def health_ready():
 
 # Catalog endpoint
 
+
 @app.get("/api/v1/catalog")
 def get_catalog():
     with SessionLocal() as db:
         products = db.scalars(
-            select(Product)
-            .where(Product.active.is_(True))
-            .order_by(Product.sku)
+            select(Product).where(Product.active.is_(True)).order_by(Product.sku)
         ).all()
 
         return {
@@ -137,9 +141,7 @@ def get_inventory(sku: str):
                 },
             )
 
-        available = (
-            inventory.quantity_on_hand - inventory.quantity_reserved
-        )
+        available = inventory.quantity_on_hand - inventory.quantity_reserved
 
         return {
             "sku": inventory.sku,
@@ -148,6 +150,7 @@ def get_inventory(sku: str):
 
 
 # Prometheus metrics endpoint
+
 
 @app.get("/metrics")
 def get_metrics():
