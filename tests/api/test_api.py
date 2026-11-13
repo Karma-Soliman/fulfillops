@@ -7,6 +7,7 @@ def test_health_endpoints(client):
     assert response.status_code == 200
     assert response.json() == {"status": "ready"}
 
+
 def test_health_ready_when_database_unavailable(client, monkeypatch):
     from api import main
 
@@ -19,6 +20,7 @@ def test_health_ready_when_database_unavailable(client, monkeypatch):
 
     assert response.status_code == 503
     assert response.json() == {"status": "not_ready"}
+
 
 def test_catalog(client):
     response = client.get("/api/v1/catalog")
@@ -66,6 +68,8 @@ def test_create_order(client):
 
     inventory = client.get("/api/v1/inventory/KIT-100")
     assert inventory.json()["available"] == 6
+
+
 def test_idempotent_order_replay(client):
     headers = {"Idempotency-Key": "replay-test-001"}
     payload = {
@@ -153,6 +157,8 @@ def test_insufficient_stock(client):
 
     inventory = client.get("/api/v1/inventory/KIT-100")
     assert inventory.json()["available"] == 7
+
+
 def test_concurrent_idempotent_requests():
     from concurrent.futures import ThreadPoolExecutor
     from fastapi.testclient import TestClient
@@ -178,10 +184,7 @@ def test_concurrent_idempotent_requests():
 
     assert all(status == 202 for status, _ in results)
 
-    order_ids = {
-        body["order_id"]
-        for _, body in results
-    }
+    order_ids = {body["order_id"] for _, body in results}
 
     assert len(order_ids) == 1
 
@@ -189,6 +192,8 @@ def test_concurrent_idempotent_requests():
         inventory = test_client.get("/api/v1/inventory/KIT-100")
 
     assert inventory.json()["available"] == 6
+
+
 def test_concurrent_orders_do_not_oversell():
     from concurrent.futures import ThreadPoolExecutor
     from fastapi.testclient import TestClient
@@ -218,6 +223,7 @@ def test_concurrent_orders_do_not_oversell():
         inventory = test_client.get("/api/v1/inventory/KIT-100")
 
     assert inventory.json()["available"] == 0
+
 
 def test_prometheus_metrics(client):
     from api.database import SessionLocal

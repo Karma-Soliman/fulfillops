@@ -1,10 +1,9 @@
-
 from prometheus_client import (
+    CONTENT_TYPE_LATEST as CONTENT_TYPE_LATEST,
     Counter,
     Histogram,
     REGISTRY,
-    generate_latest,
-    CONTENT_TYPE_LATEST,
+    generate_latest as generate_latest,
 )
 from prometheus_client.core import CounterMetricFamily
 
@@ -47,9 +46,7 @@ class DatabaseMetricsCollector:
 
         with SessionLocal() as db:
             failed_count = db.execute(
-                text(
-                    "SELECT COUNT(*) FROM orders WHERE status = 'failed'"
-                )
+                text("SELECT COUNT(*) FROM orders WHERE status = 'failed'")
             ).scalar_one()
 
             retry_count = db.execute(

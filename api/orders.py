@@ -1,4 +1,3 @@
-
 import hashlib
 import json
 import uuid
@@ -46,9 +45,8 @@ async def create_order(
             "The Idempotency-Key header is required.",
         )
 
-    if (
-        not 8 <= len(idempotency_key) <= 128
-        or any(ord(char) < 32 or ord(char) > 126 for char in idempotency_key)
+    if not 8 <= len(idempotency_key) <= 128 or any(
+        ord(char) < 32 or ord(char) > 126 for char in idempotency_key
     ):
         raise_api_error(
             400,
@@ -134,9 +132,7 @@ async def create_order(
         with db.begin():
             # Serialize requests using the same idempotency key.
             db.execute(
-                text(
-                    "SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"
-                ),
+                text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
                 {"key": idempotency_key},
             )
 
@@ -185,10 +181,7 @@ async def create_order(
                             "One or more SKUs are not available in the catalog.",
                         )
 
-                    available = (
-                        inventory.quantity_on_hand
-                        - inventory.quantity_reserved
-                    )
+                    available = inventory.quantity_on_hand - inventory.quantity_reserved
 
                     if available < quantity:
                         raise_api_error(

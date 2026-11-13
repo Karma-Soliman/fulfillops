@@ -78,9 +78,11 @@ def health_ready():
     try:
         with SessionLocal() as db:
             db.execute(text("SELECT 1"))
-            result = db.execute(
-                text("SELECT version_num FROM alembic_version")
-            ).scalars().all()
+            result = (
+                db.execute(text("SELECT version_num FROM alembic_version"))
+                .scalars()
+                .all()
+            )
 
         if set(result) != get_migration_heads():
             raise RuntimeError("Database migrations are not up to date.")
@@ -98,9 +100,7 @@ def health_ready():
 def get_catalog():
     with SessionLocal() as db:
         products = db.scalars(
-            select(Product)
-            .where(Product.active.is_(True))
-            .order_by(Product.sku)
+            select(Product).where(Product.active.is_(True)).order_by(Product.sku)
         ).all()
 
         return {
@@ -128,9 +128,7 @@ def get_inventory(sku: str):
                 },
             )
 
-        available = (
-            inventory.quantity_on_hand - inventory.quantity_reserved
-        )
+        available = inventory.quantity_on_hand - inventory.quantity_reserved
 
         return {
             "sku": inventory.sku,
