@@ -1,3 +1,4 @@
+import os
 import signal
 import threading
 from time import perf_counter
@@ -16,7 +17,7 @@ from worker.telemetry import HealthServer, Telemetry
 
 def main():
     config = Config.from_env()
-    worker_id = str(uuid4())
+    worker_id = os.getenv("HOSTNAME") or str(uuid4())
     telemetry = Telemetry(worker_id, level=config.log_level)
     server = HealthServer(telemetry, port=config.metrics_port)
     server.start()
