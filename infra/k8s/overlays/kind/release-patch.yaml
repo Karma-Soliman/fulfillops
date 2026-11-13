@@ -9,10 +9,10 @@ spec:
   template:
     metadata:
       annotations:
-        fulfillops.io/release-note: "broken-20261113T180416Z"
+        fulfillops.io/release-note: "rolling-20261113T180034Z"
     spec:
       containers:
         - name: api
           readinessProbe:
             httpGet:
-              path: /health/broken
+              path: /health/ready
