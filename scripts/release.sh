@@ -7,15 +7,15 @@ cd "$ROOT_DIR"
 source scripts/lib-gitops.sh
 
 usage() {
-  echo 'Usage: scripts/release.sh <image-sha> | scripts/release.sh --note "text"' >&2
+  echo 'Usage: scripts/release.sh --image <full-commit-sha> | scripts/release.sh --note "text"' >&2
   exit 2
 }
 
 mode=""
 value=""
-if [[ $# -eq 1 && "$1" != --note ]]; then
+if [[ $# -eq 2 && "$1" == --image ]]; then
   mode=image
-  value="$1"
+  value="$2"
 elif [[ $# -eq 2 && "$1" == --note ]]; then
   mode=note
   value="$2"
@@ -23,8 +23,8 @@ else
   usage
 fi
 
-if [[ "$mode" == image && ! "$value" =~ ^[[:xdigit:]]{7,40}$ ]]; then
-  echo "Image SHA must be 7 to 40 hexadecimal characters." >&2
+if [[ "$mode" == image && ! "$value" =~ ^[[:xdigit:]]{40}$ ]]; then
+  echo "Image SHA must be a full 40-character hexadecimal commit SHA." >&2
   exit 2
 fi
 if [[ "$mode" == note && ( -z "$value" || "$value" == *$'\n'* ) ]]; then
@@ -32,18 +32,34 @@ if [[ "$mode" == note && ( -z "$value" || "$value" == *$'\n'* ) ]]; then
   exit 2
 fi
 
+if [[ "$mode" == image ]]; then
+  head_sha="$(git rev-parse HEAD)"
+  if [[ "$head_sha" != "$value" ]]; then
+    echo "Refusing to build image: requested SHA and current HEAD differ." >&2
+    echo "Requested image SHA: $value" >&2
+    echo "Current HEAD:        $head_sha" >&2
+    exit 1
+  fi
+fi
+
 require_clean_main
 before_revision="$(kubectl -n argocd get application fulfillops \
   -o jsonpath='{.status.sync.revision}')"
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
-branch_suffix="${value:0:8}"
-if [[ "$mode" == note ]]; then
-  branch_suffix="$stamp"
+branch="release/$stamp"
+
+if git show-ref --verify --quiet "refs/heads/$branch"; then
+  echo "Release branch already exists locally: $branch" >&2
+  exit 1
 fi
-branch="release/$branch_suffix"
+remote_branch="$(git ls-remote --heads origin "refs/heads/$branch")"
+if [[ -n "$remote_branch" ]]; then
+  echo "Release branch already exists on origin: $branch" >&2
+  exit 1
+fi
 
 if [[ "$mode" == image ]]; then
-  image_context="${IMAGE_CONTEXT:-.}"
+  image_context="$ROOT_DIR"
   image_tag="fulfillops:$value"
   architecture="$(docker info --format '{{.Architecture}}')"
   case "$architecture" in
