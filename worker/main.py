@@ -24,7 +24,12 @@ def main():
         config.database_url, pool_size=config.pool_size, pool_pre_ping=True
     )
     stopping = threading.Event()
-    for sig in (signal.SIGTERM, signal.SIGINT):
+    signals = [signal.SIGTERM, signal.SIGINT]
+
+    if hasattr(signal, "SIGBREAK"):
+        signals.append(signal.SIGBREAK)
+
+    for sig in signals:
         signal.signal(sig, lambda *_: stopping.set())
     try:
         # Worker reflects shared tables; it never creates or migrates them.

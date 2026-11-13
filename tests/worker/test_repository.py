@@ -1,4 +1,5 @@
 import os
+import signal
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 from pathlib import Path
@@ -381,7 +382,8 @@ def test_only_one_worker_reclaims_expired_job(sessions):
 
 
 def test_killed_process_leaves_durable_recoverable_work(sessions):
-    import selectors
+    from queue import Queue
+    from threading import Thread
 
     _, job_id = seed(sessions)
     url = sessions.kw["bind"].url.render_as_string(hide_password=False)
@@ -405,13 +407,26 @@ time.sleep(60)
         [sys.executable, "-c", code],
         env=dict(os.environ, DATABASE_URL=url),
         stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         text=True,
     )
+
+    output = Queue()
+
+    def read_child_output():
+        output.put(child.stdout.readline().strip())
+
+    reader = Thread(target=read_child_output, daemon=True)
+    reader.start()
+
     try:
-        with selectors.DefaultSelector() as selector:
-            selector.register(child.stdout, selectors.EVENT_READ)
-            assert selector.select(timeout=10), "Child did not commit its claim"
-            assert child.stdout.readline().strip() == "CLAIM_COMMITTED"
+        try:
+            message = output.get(timeout=10)
+        except Exception:
+            stderr = child.stderr.read() if child.poll() is not None else ""
+            pytest.fail(f"Child did not commit its claim. stderr: {stderr}")
+
+        assert message == "CLAIM_COMMITTED"
         child.kill()
         child.wait(timeout=5)
         with sessions() as session:
@@ -429,6 +444,7 @@ time.sleep(60)
             child.kill()
             child.wait(timeout=5)
         child.stdout.close()
+        child.stderr.close()
 
 
 def test_poison_processing_callback_reaches_durable_failure(sessions):
@@ -579,6 +595,13 @@ def test_lease_expiring_while_inventory_locked_cannot_complete(sessions):
     assert stock(sessions) == (6, 0)
 
 
+def request_graceful_shutdown(child):
+    if os.name == "nt":
+        child.send_signal(signal.CTRL_BREAK_EVENT)
+    else:
+        child.terminate()
+
+
 def test_worker_entry_point_completes_and_exits_on_sigterm(sessions):
     import json
 
@@ -590,6 +613,7 @@ def test_worker_entry_point_completes_and_exits_on_sigterm(sessions):
         env=dict(os.environ, DATABASE_URL=url, WORKER_METRICS_PORT="0"),
         stdout=subprocess.PIPE,
         text=True,
+        creationflags=(subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0),
     )
     try:
         from time import monotonic
@@ -605,7 +629,7 @@ def test_worker_entry_point_completes_and_exits_on_sigterm(sessions):
             time.sleep(0.02)
         else:
             pytest.fail("Worker did not complete order")
-        child.terminate()
+        request_graceful_shutdown(child)
         assert child.wait(timeout=5) == 0
         logs = [json.loads(line) for line in child.stdout.read().splitlines()]
         completed = [record for record in logs if record["event"] == "job_completed"]
@@ -747,6 +771,9 @@ def launch_worker(sessions, log_path):
             env=environment,
             stdout=log,
             stderr=log,
+            creationflags=(
+                subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
+            ),
         )
     finally:
         log.close()
@@ -835,7 +862,7 @@ def test_two_real_workers_expose_health_and_recover_killed_peer(sessions, tmp_pa
                 )
 
         wait_until(all_completed, timeout=12)
-        children[1].terminate()
+        request_graceful_shutdown(children[1])
         assert children[1].wait(timeout=5) == 0
         assert stock(sessions) == (5, 0)
         with sessions() as session:
@@ -876,7 +903,7 @@ def test_sigterm_during_active_completion_finishes_without_claiming_more(
 
             wait_until(active_claim, timeout=3)
             started = monotonic()
-            child.terminate()
+            request_graceful_shutdown(child)
             # The active job must not be released while completion is blocked.
             with sessions() as session:
                 jobs = session.scalars(select(Job)).all()
