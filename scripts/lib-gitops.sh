@@ -96,10 +96,14 @@ argo_refresh_and_wait() {
 }
 
 argo_wait_health() {
-  local wanted_health="$1" timeout_seconds="$2" elapsed=0 sync health revision
+  local wanted_health="$1" timeout_seconds="$2" elapsed=0 sync health revision status
   while (( elapsed <= timeout_seconds )); do
-    read -r sync health revision < <(kubectl -n argocd get application fulfillops \
-      -o jsonpath='{.status.sync.status}{" "}{.status.health.status}{" "}{.status.sync.revision}')
+    status="$(kubectl -n argocd get application fulfillops \
+      -o jsonpath='{.status.sync.status}{" "}{.status.health.status}{" "}{.status.sync.revision}')" || {
+      echo "Failed to read Argo CD application status while waiting for health=$wanted_health." >&2
+      return 1
+    }
+    read -r sync health revision <<< "$status"
     printf '%s sync=%s health=%s revision=%s\n' \
       "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${sync:-Unknown}" \
       "${health:-Unknown}" "${revision:-Unknown}"
@@ -114,21 +118,43 @@ argo_wait_health() {
 }
 
 capture_state() {
-  local dir="$1" label="$2"
-  mkdir -p "$dir"
-  kubectl -n fulfillops get deployment,replicaset,pods -o wide \
-    >"$dir/$label-workloads.txt" 2>&1
-  kubectl -n fulfillops get endpoints fulfillops-api -o wide \
-    >"$dir/$label-api-endpoints.txt" 2>&1
-  kubectl -n fulfillops rollout history deployment/fulfillops-api \
-    >"$dir/$label-rollout-history.txt" 2>&1
-  kubectl -n fulfillops get deployment fulfillops-api \
+  local dir="$1" label="$2" file
+  if ! mkdir -p "$dir"; then
+    echo "Failed to create evidence directory $dir." >&2
+    return 1
+  fi
+  file="$dir/$label-workloads.txt"
+  if ! kubectl -n fulfillops get deployment,replicaset,pods -o wide >"$file" 2>&1; then
+    echo "Failed to capture workloads in $file." >&2
+    return 1
+  fi
+  file="$dir/$label-api-endpoints.txt"
+  if ! kubectl -n fulfillops get endpoints fulfillops-api -o wide >"$file" 2>&1; then
+    echo "Failed to capture API endpoints in $file." >&2
+    return 1
+  fi
+  file="$dir/$label-rollout-history.txt"
+  if ! kubectl -n fulfillops rollout history deployment/fulfillops-api >"$file" 2>&1; then
+    echo "Failed to capture rollout history in $file." >&2
+    return 1
+  fi
+  file="$dir/$label-deployment-conditions.txt"
+  if ! kubectl -n fulfillops get deployment fulfillops-api \
     -o jsonpath='{range .status.conditions[*]}{.type}{" status="}{.status}{" reason="}{.reason}{" message="}{.message}{"\n"}{end}' \
-    >"$dir/$label-deployment-conditions.txt" 2>&1
-  kubectl -n fulfillops get events --sort-by=.lastTimestamp \
-    >"$dir/$label-recent-events.txt" 2>&1
-  kubectl -n argocd get application fulfillops -o yaml \
-    >"$dir/$label-argocd-status-history.yaml" 2>&1
+    >"$file" 2>&1; then
+    echo "Failed to capture Deployment conditions in $file." >&2
+    return 1
+  fi
+  file="$dir/$label-recent-events.txt"
+  if ! kubectl -n fulfillops get events --sort-by=.lastTimestamp >"$file" 2>&1; then
+    echo "Failed to capture recent events in $file." >&2
+    return 1
+  fi
+  file="$dir/$label-argocd-status-history.yaml"
+  if ! kubectl -n argocd get application fulfillops -o yaml >"$file" 2>&1; then
+    echo "Failed to capture the Argo CD Application in $file." >&2
+    return 1
+  fi
 }
 
 set_release_note() {
@@ -169,9 +195,18 @@ PY
 }
 
 advance_local_main() {
-  git -C "$GITOPS_ROOT" fetch --quiet origin main
-  git -C "$GITOPS_ROOT" switch main
-  git -C "$GITOPS_ROOT" merge --ff-only origin/main
+  if ! git -C "$GITOPS_ROOT" fetch --quiet origin main; then
+    echo "Failed to fetch origin/main after the drill." >&2
+    return 1
+  fi
+  if ! git -C "$GITOPS_ROOT" switch main; then
+    echo "Failed to switch back to main after the drill." >&2
+    return 1
+  fi
+  if ! git -C "$GITOPS_ROOT" merge --ff-only origin/main; then
+    echo "Failed to fast-forward local main to origin/main after the drill." >&2
+    return 1
+  fi
 }
 
 require_healthy_app() {

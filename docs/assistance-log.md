@@ -14,3 +14,4 @@
 2026-11-13 — Ruff triage — Codex — identified and excluded the two vendored assessment Python tools from Ruff check/format, recorded remaining A/B-owned violations, and reviewed diffs without applying them; human review pending.
 2026-11-13 — Requirements traceability audit — Codex — audited assignment/API/setup requirements against committed main and CI evidence; generated docs/requirements-audit.md; human review pending.
 2026-11-13 — Worker test merge resolution — OpenAI Codex — retained main formatting plus worker HOSTNAME isolation and reliability evidence snapshots in tests/worker/test_repository.py; human review pending.
+2026-11-13 — Rolling-update evidence failure handling — Codex (GPT-6) — fixed Argo status parsing under strict Bash mode and made post-rollout evidence failures explicit while preserving summary output; human review pending.
