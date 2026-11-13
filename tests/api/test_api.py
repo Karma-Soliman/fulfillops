@@ -8,6 +8,20 @@ def test_health_endpoints(client):
     assert response.json() == {"status": "ready"}
 
 
+def test_health_ready_when_database_unavailable(client, monkeypatch):
+    from api import main
+
+    def raise_database_error():
+        raise RuntimeError("Database unavailable")
+
+    monkeypatch.setattr(main, "SessionLocal", raise_database_error)
+
+    response = client.get("/health/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {"status": "not_ready"}
+
+
 def test_catalog(client):
     response = client.get("/api/v1/catalog")
 
@@ -212,6 +226,29 @@ def test_concurrent_orders_do_not_oversell():
 
 
 def test_prometheus_metrics(client):
+    from api.database import SessionLocal
+    from api.models import Job, Order
+
+    # Create one terminally failed order with three attempts.
+    with SessionLocal() as db:
+        with db.begin():
+            order = Order(
+                customer_id="METRICS-TEST",
+                status="failed",
+                total_cents=100,
+            )
+            db.add(order)
+            db.flush()
+
+            db.add(
+                Job(
+                    order_id=order.id,
+                    status="failed",
+                    attempts=3,
+                    max_attempts=3,
+                )
+            )
+
     response = client.get("/metrics")
 
     assert response.status_code == 200
@@ -229,3 +266,12 @@ def test_prometheus_metrics(client):
 
     for metric in required_metrics:
         assert metric in metrics
+
+    assert "fulfillops_orders_failed_total 1.0" in metrics
+    assert "fulfillops_worker_retries_total 2.0" in metrics
+
+    # Scraping again must not increment database-backed metrics.
+    second_response = client.get("/metrics")
+    assert second_response.status_code == 200
+    assert "fulfillops_orders_failed_total 1.0" in second_response.text
+    assert "fulfillops_worker_retries_total 2.0" in second_response.text
