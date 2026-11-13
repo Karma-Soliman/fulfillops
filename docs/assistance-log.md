@@ -1,4 +1,4 @@
-2026-11-10 — Task 2: temporary infrastructure stub app — Codex (GPT-6) — generated infra/stub-app API, worker, migration command, pinned multistage image, dependency lock, and runtime documentation; human review pending.
+2026-11-10 — Task 2: temporary infrastructure placeholder app — Codex (GPT-6) — generated the placeholder API, worker, migration command, pinned multistage image, dependency lock, and runtime documentation; human review pending.
 2026-11-10 — Task 3: local Compose stack — Codex (GPT-6) — generated Compose services, nginx DNS re-resolution, isolated test override, Make targets, and .env example; human review pending.
 2026-11-10 — Task 4: CI pipeline — Codex (GPT-6) — generated pinned GitHub Actions workflow, deployment contract tests, vulnerability policy, and CI documentation; human review pending.
 2026-11-11 — Task 5: local kind cluster — Codex (GPT-6) — generated pinned kind config, cluster lifecycle and smoke scripts, Make targets, and Kubernetes environment documentation; human review pending.
@@ -16,3 +16,4 @@
 2026-11-13 — Worker test merge resolution — OpenAI Codex — retained main formatting plus worker HOSTNAME isolation and reliability evidence snapshots in tests/worker/test_repository.py; human review pending.
 2026-11-13 — Rolling-update evidence failure handling — Codex (GPT-6) — fixed Argo status parsing under strict Bash mode and made post-rollout evidence failures explicit while preserving summary output; human review pending.
 2026-11-13 — Phase 2 real-app deployment evidence — Codex (GPT-6) — captured real-app drift, Prometheus, rolling/broken release, Compose persistence, and GHCR digest evidence; human review pending.
+2026-11-13 — Remove temporary placeholder app — Codex (GPT-6) — removed the temporary app and its contract test, and simplified CI and documentation for the real application; human review pending.
