@@ -34,7 +34,7 @@ class Telemetry:
             return
         # Only explicitly allowed fields can enter output, never exception objects.
         safe = {key: value for key, value in fields.items()
-                if key in {"job_id", "order_id", "attempt", "recovered", "delay_seconds", "reason", "operation"}}
+                if key in {"job_id", "order_id", "attempt", "recovered", "delay_seconds", "reason", "operation", "metrics_port"}}
         record = {"timestamp": datetime.now(timezone.utc).isoformat(),
                   "level": severity, "event": event, "worker_id": self.worker_id, **safe}
         with self._log_lock:

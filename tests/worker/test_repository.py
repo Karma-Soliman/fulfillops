@@ -644,3 +644,143 @@ def test_telemetry_failure_cannot_undo_committed_completion(sessions):
     repo.observer = unavailable_observer
     assert repo.complete(repo.claim("worker"))
     assert stock(sessions) == (6, 0)
+
+
+def wait_until(predicate, timeout=10):
+    from time import monotonic, sleep
+
+    deadline = monotonic() + timeout
+    while monotonic() < deadline:
+        result = predicate()
+        if result:
+            return result
+        sleep(0.02)
+    pytest.fail("Timed out waiting for worker lifecycle condition")
+
+
+def launch_worker(sessions, log_path):
+    """Run the production entry point with no fake processor or repository."""
+    log = log_path.open("w")
+    environment = dict(os.environ,
+                       DATABASE_URL=sessions.kw["bind"].url.render_as_string(hide_password=False),
+                       WORKER_METRICS_PORT="0", WORKER_LEASE_SECONDS="4",
+                       WORKER_RENEW_INTERVAL_SECONDS="1", WORKER_POLL_INTERVAL_SECONDS="0.05",
+                       LOG_LEVEL="INFO")
+    try:
+        child = subprocess.Popen([sys.executable, "-m", "worker.main"],
+                                 cwd=Path(__file__).resolve().parents[2],
+                                 env=environment, stdout=log, stderr=log)
+    finally:
+        log.close()
+    return child
+
+
+def worker_records(path):
+    import json
+
+    records = []
+    for line in path.read_text().splitlines():
+        try:
+            records.append(json.loads(line))
+        except json.JSONDecodeError:
+            pass  # A concurrent read can see a partial final line.
+    return records
+
+
+def stop_children(children):
+    for child in children:
+        if child.poll() is None:
+            child.kill()
+        child.wait(timeout=5)
+
+
+def test_two_real_workers_expose_health_and_recover_killed_peer(sessions, tmp_path):
+    from urllib.request import urlopen
+    import json
+
+    order_one, _ = seed(sessions)
+    order_two, _ = seed(sessions)
+    children = []
+    paths = [tmp_path / "worker-one.log", tmp_path / "worker-two.log"]
+    Inventory, Job, Order = (sessions.models.inventory, sessions.models.jobs,
+                             sessions.models.orders)
+    try:
+        # Pause completion without changing production code or editing lease times.
+        with sessions.begin() as blocker:
+            blocker.scalar(select(Inventory).where(Inventory.sku == "KIT-100").with_for_update())
+            children.extend(launch_worker(sessions, path) for path in paths)
+            starts = []
+            for path in paths:
+                starts.append(wait_until(lambda path=path: next(
+                    (r for r in worker_records(path) if r["event"] == "worker_started"), None)))
+            assert starts[0]["worker_id"] != starts[1]["worker_id"]
+            for start in starts:
+                base = f"http://127.0.0.1:{start['metrics_port']}"
+                with urlopen(base + "/health/live", timeout=2) as response:
+                    assert json.load(response) == {"status": "ok"}
+                with urlopen(base + "/metrics", timeout=2) as response:
+                    assert "fulfillops_worker_claims_total" in response.read().decode()
+
+            def both_claimed():
+                with sessions() as session:
+                    jobs = session.scalars(select(Job).where(Job.status == "processing")).all()
+                    return len(jobs) == 2 and len({job.locked_by for job in jobs}) == 2
+
+            wait_until(both_claimed, timeout=3)
+            children[0].kill()
+            children[0].wait(timeout=3)
+        # Inventory lock released. Survivor finishes and recovers its peer after
+        # natural lease expiry; no fixture SQL advances lease_expires_at.
+        def all_completed():
+            with sessions() as session:
+                return all(session.get(Order, oid).status == "completed"
+                           for oid in (order_one, order_two))
+
+        wait_until(all_completed, timeout=12)
+        children[1].terminate()
+        assert children[1].wait(timeout=5) == 0
+        assert stock(sessions) == (5, 0)
+        with sessions() as session:
+            jobs = session.scalars(select(Job)).all()
+            assert sorted(job.attempts for job in jobs) == [1, 2]
+            assert all(job.status == "completed" for job in jobs)
+        assert any(record["event"] == "job_claimed" and record["recovered"]
+                   for record in worker_records(paths[1]))
+    finally:
+        stop_children(children)
+
+
+def test_sigterm_during_active_completion_finishes_without_claiming_more(sessions, tmp_path):
+    from time import monotonic
+
+    seed(sessions)
+    seed(sessions)
+    log_path = tmp_path / "worker.log"
+    children = []
+    Job, Inventory = sessions.models.jobs, sessions.models.inventory
+    try:
+        with sessions.begin() as blocker:
+            blocker.scalar(select(Inventory).where(Inventory.sku == "KIT-100").with_for_update())
+            child = launch_worker(sessions, log_path)
+            children.append(child)
+
+            def active_claim():
+                return any(record["event"] == "job_claimed" for record in worker_records(log_path))
+
+            wait_until(active_claim, timeout=3)
+            started = monotonic()
+            child.terminate()
+            # The active job must not be released while completion is blocked.
+            with sessions() as session:
+                jobs = session.scalars(select(Job)).all()
+                assert sorted(job.status for job in jobs) == ["processing", "queued"]
+                active = next(job for job in jobs if job.status == "processing")
+                assert active.lease_token is not None
+        assert child.wait(timeout=5) == 0
+        assert monotonic() - started < 8
+        assert stock(sessions) == (6, 1)
+        with sessions() as session:
+            assert sorted(job.status for job in session.scalars(select(Job))) == ["completed", "queued"]
+        assert worker_records(log_path)[-1]["event"] == "worker_stopped"
+    finally:
+        stop_children(children)

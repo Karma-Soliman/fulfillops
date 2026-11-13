@@ -38,7 +38,7 @@ def main():
                                 models.classes.order_items, config.lease_seconds,
                                 config.backoff_base, config.backoff_max,
                                 observer=telemetry.record)
-        telemetry.log("worker_started")
+        telemetry.log("worker_started", metrics_port=server.server.server_port)
         while not stopping.is_set():
             try:
                 claim = repository.claim(worker_id)
