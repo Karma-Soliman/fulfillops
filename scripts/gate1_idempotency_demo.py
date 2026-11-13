@@ -1,4 +1,3 @@
-
 """Reproducible Gate 1 proof: idempotency across two API replicas."""
 
 from concurrent.futures import ThreadPoolExecutor
@@ -16,10 +15,14 @@ import sys
 PROJECT = "fulfillops-test"
 BASE_URL = "http://127.0.0.1:18080"
 COMPOSE = [
-    "docker", "compose",
-    "-f", "compose.yaml",
-    "-f", "compose.test.yaml",
-    "--project-name", PROJECT,
+    "docker",
+    "compose",
+    "-f",
+    "compose.yaml",
+    "-f",
+    "compose.test.yaml",
+    "--project-name",
+    PROJECT,
 ]
 SAME_KEY = "gate1-same-key-20261113"
 COMPETING_KEYS = [
@@ -64,9 +67,17 @@ def database_snapshot():
     output = run(
         COMPOSE
         + [
-            "exec", "-T", "postgres",
-            "psql", "-U", "postgres", "-d", "fulfillops",
-            "-At", "-c", query,
+            "exec",
+            "-T",
+            "postgres",
+            "psql",
+            "-U",
+            "postgres",
+            "-d",
+            "fulfillops",
+            "-At",
+            "-c",
+            query,
         ]
     )
     return loads(output)
@@ -90,15 +101,16 @@ def check_replicas():
         raise AssertionError(f"Expected 2 API replicas; found {len(ids)}")
 
     for container_id in ids:
-        health = run([
-            "docker", "inspect",
-            "--format={{.State.Health.Status}}",
-            container_id,
-        ])
+        health = run(
+            [
+                "docker",
+                "inspect",
+                "--format={{.State.Health.Status}}",
+                container_id,
+            ]
+        )
         if health != "healthy":
-            raise AssertionError(
-                f"API replica {container_id[:12]} is {health}"
-            )
+            raise AssertionError(f"API replica {container_id[:12]} is {health}")
 
     print("Both API replicas are healthy.", flush=True)
     return ids
@@ -185,9 +197,7 @@ def main():
 
     # Test 1: eight simultaneous requests using the same key.
     print("\nTEST 1: Eight simultaneous same-key requests", flush=True)
-    same_requests = [
-        (SAME_KEY, SAME_PAYLOAD) for _ in range(8)
-    ]
+    same_requests = [(SAME_KEY, SAME_PAYLOAD) for _ in range(8)]
     same_results = concurrent_requests(same_requests)
 
     for index, (status, body) in enumerate(same_results, start=1):
@@ -239,9 +249,7 @@ def main():
 
     statuses = sorted(status for status, _ in competing_results)
     if statuses != [202, 409]:
-        raise AssertionError(
-            f"Expected one HTTP 202 and one HTTP 409; got {statuses}"
-        )
+        raise AssertionError(f"Expected one HTTP 202 and one HTTP 409; got {statuses}")
 
     after_competing = database_snapshot()
     print_snapshot("DATABASE AFTER COMPETING-KEY TEST", after_competing)
