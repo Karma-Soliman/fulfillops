@@ -18,7 +18,7 @@ from worker.processor import process_claim
 
 
 @pytest.fixture
-def sessions():
+def sessions(request):
     url = os.getenv("TEST_DATABASE_URL")
     if not url:
         pytest.skip("TEST_DATABASE_URL required for real PostgreSQL tests")
@@ -43,12 +43,54 @@ def sessions():
         models.prepare(autoload_with=isolated)
         factory = sessionmaker(isolated)
         factory.models = models.classes
+        factory.evidence_dir = None
+        if os.getenv("WORKER_EVIDENCE_DIR"):
+            factory.evidence_dir = Path(os.environ["WORKER_EVIDENCE_DIR"]) / request.node.name
+            factory.evidence_dir.mkdir(parents=True, exist_ok=False)
+        artifact_dir = (request.getfixturevalue("tmp_path")
+                        if factory.evidence_dir is not None and "tmp_path" in request.fixturenames
+                        else None)
         yield factory
     finally:
-        isolated.dispose()
-        with engine.begin() as connection:
-            connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
-        engine.dispose()
+        try:
+            if "factory" in locals() and factory.evidence_dir is not None:
+                capture_snapshot(factory, "final")
+                if artifact_dir is not None:
+                    import shutil
+                    for artifact in artifact_dir.iterdir():
+                        if artifact.is_file() and artifact.suffix in {".log", ".prom"}:
+                            shutil.copyfile(artifact, factory.evidence_dir / artifact.name)
+        finally:
+            isolated.dispose()
+            try:
+                with engine.begin() as connection:
+                    connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
+            finally:
+                engine.dispose()
+
+
+def capture_snapshot(sessions, stage, **observations):
+    """Save only synthetic test state; omit customers, keys and lease tokens."""
+    if getattr(sessions, "evidence_dir", None) is None:
+        return
+    import json
+    from datetime import datetime, timezone
+
+    m = sessions.models
+    with sessions() as session:
+        jobs = session.execute(select(m.jobs.id, m.jobs.order_id, m.jobs.status,
+                                      m.jobs.attempts, m.jobs.max_attempts,
+                                      m.jobs.available_at, m.jobs.locked_by,
+                                      m.jobs.lease_expires_at, m.jobs.last_error)).mappings().all()
+        orders = session.execute(select(m.orders.id, m.orders.status,
+                                        m.orders.total_cents)).mappings().all()
+        inventory = session.execute(select(m.inventory.sku, m.inventory.quantity_on_hand,
+                                           m.inventory.quantity_reserved)).mappings().all()
+    state = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "stage": stage,
+             "observations": observations, "jobs": [dict(row) for row in jobs], "orders": [dict(row) for row in orders],
+             "inventory": [dict(row) for row in inventory]}
+    with (sessions.evidence_dir / "database-snapshots.jsonl").open("a") as output:
+        output.write(json.dumps(state, default=str) + "\n")
 
 
 def repository(sessions):
@@ -74,6 +116,7 @@ def seed(sessions, quantities=None):
             session.add(m.order_items(id=uuid4(), order_id=order_id, sku=sku,
                                       quantity=quantity, unit_price_cents=price))
         session.add(m.jobs(id=job_id, order_id=order_id))
+    capture_snapshot(sessions, "accepted")
     return order_id, job_id
 
 
@@ -314,6 +357,7 @@ def test_third_crashed_attempt_is_failed_without_fourth_claim(sessions):
     repo = repository(sessions)
     for _ in range(3):
         assert repo.claim("crashing-worker") is not None
+        capture_snapshot(sessions, "crashed_attempt_claimed")
         expire(sessions, job_id)
     assert repo.claim("recovery-worker") is None
     assert repo.claim("fourth") is None
@@ -388,6 +432,13 @@ time.sleep(60)
 def test_poison_processing_callback_reaches_durable_failure(sessions):
     order_id, job_id = seed(sessions)
     repo = repository(sessions)
+    import io
+    from prometheus_client import generate_latest
+    from worker.telemetry import Telemetry
+
+    logs = io.StringIO()
+    telemetry = Telemetry("poison-worker", stream=logs)
+    repo.observer = telemetry.record
 
     def poison(_claim):
         raise ValueError("deterministic test failure; never persist raw exception")
@@ -396,8 +447,16 @@ def test_poison_processing_callback_reaches_durable_failure(sessions):
         claim = repo.claim("poison-worker")
         assert claim is not None
         assert process_claim(repo, claim, poison) == "failure_recorded"
-        make_retry_due(sessions, job_id)
+        capture_snapshot(sessions, "poison_failure_recorded")
+        with sessions() as session:
+            if session.get(sessions.models.jobs, job_id).status == "queued":
+                assert repo.claim("before_backoff") is None
+                # Only test retry waiting is accelerated; exact delays are stored above.
+                make_retry_due(sessions, job_id)
     assert repo.claim("fourth") is None
+    if sessions.evidence_dir is not None:
+        (sessions.evidence_dir / "poison-worker.log").write_text(logs.getvalue())
+        (sessions.evidence_dir / "poison-worker.prom").write_bytes(generate_latest(telemetry.registry))
     with sessions() as session:
         job = session.get(sessions.models.jobs, job_id)
         assert (job.status, job.attempts, job.last_error) == ("failed", 3, "processing_failed")
@@ -665,7 +724,7 @@ def launch_worker(sessions, log_path):
                        DATABASE_URL=sessions.kw["bind"].url.render_as_string(hide_password=False),
                        WORKER_METRICS_PORT="0", WORKER_LEASE_SECONDS="4",
                        WORKER_RENEW_INTERVAL_SECONDS="1", WORKER_POLL_INTERVAL_SECONDS="0.05",
-                       LOG_LEVEL="INFO")
+                       LOG_LEVEL="INFO", HOSTNAME="test-worker-" + uuid4().hex)
     try:
         child = subprocess.Popen([sys.executable, "-m", "worker.main"],
                                  cwd=Path(__file__).resolve().parents[2],
@@ -714,12 +773,14 @@ def test_two_real_workers_expose_health_and_recover_killed_peer(sessions, tmp_pa
                 starts.append(wait_until(lambda path=path: next(
                     (r for r in worker_records(path) if r["event"] == "worker_started"), None)))
             assert starts[0]["worker_id"] != starts[1]["worker_id"]
-            for start in starts:
+            for index, start in enumerate(starts):
                 base = f"http://127.0.0.1:{start['metrics_port']}"
                 with urlopen(base + "/health/live", timeout=2) as response:
                     assert json.load(response) == {"status": "ok"}
                 with urlopen(base + "/metrics", timeout=2) as response:
-                    assert "fulfillops_worker_claims_total" in response.read().decode()
+                    metrics = response.read().decode()
+                    assert "fulfillops_worker_claims_total" in metrics
+                    (tmp_path / f"metrics-before-worker-{index}.prom").write_text(metrics)
 
             def both_claimed():
                 with sessions() as session:
@@ -727,8 +788,11 @@ def test_two_real_workers_expose_health_and_recover_killed_peer(sessions, tmp_pa
                     return len(jobs) == 2 and len({job.locked_by for job in jobs}) == 2
 
             wait_until(both_claimed, timeout=3)
+            capture_snapshot(sessions, "two_workers_processing")
             children[0].kill()
             children[0].wait(timeout=3)
+            capture_snapshot(sessions, "worker_killed", pid=children[0].pid,
+                             exit_code=children[0].returncode)
         # Inventory lock released. Survivor finishes and recovers its peer after
         # natural lease expiry; no fixture SQL advances lease_expires_at.
         def all_completed():
@@ -737,6 +801,9 @@ def test_two_real_workers_expose_health_and_recover_killed_peer(sessions, tmp_pa
                            for oid in (order_one, order_two))
 
         wait_until(all_completed, timeout=12)
+        capture_snapshot(sessions, "recovery_completed")
+        with urlopen(f"http://127.0.0.1:{starts[1]['metrics_port']}/metrics", timeout=2) as response:
+            (tmp_path / "metrics-after-survivor.prom").write_bytes(response.read())
         children[1].terminate()
         assert children[1].wait(timeout=5) == 0
         assert stock(sessions) == (5, 0)
@@ -770,6 +837,7 @@ def test_sigterm_during_active_completion_finishes_without_claiming_more(session
             wait_until(active_claim, timeout=3)
             started = monotonic()
             child.terminate()
+            capture_snapshot(sessions, "sigterm_sent", pid=child.pid)
             # The active job must not be released while completion is blocked.
             with sessions() as session:
                 jobs = session.scalars(select(Job)).all()
@@ -777,7 +845,10 @@ def test_sigterm_during_active_completion_finishes_without_claiming_more(session
                 active = next(job for job in jobs if job.status == "processing")
                 assert active.lease_token is not None
         assert child.wait(timeout=5) == 0
-        assert monotonic() - started < 8
+        elapsed = monotonic() - started
+        assert elapsed < 8
+        capture_snapshot(sessions, "graceful_shutdown", elapsed_seconds=elapsed,
+                         exit_code=child.returncode)
         assert stock(sessions) == (6, 1)
         with sessions() as session:
             assert sorted(job.status for job in session.scalars(select(Job))) == ["completed", "queued"]

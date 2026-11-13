@@ -1,0 +1,3 @@
+....                                                                     [100%]
+- generated xml file: /Users/kokkasoliman/fulfillops/docs/evidence/worker-20261113T092847Z-7e0a2f/results.xml -
+4 passed in 7.24s
