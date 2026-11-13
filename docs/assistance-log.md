@@ -12,3 +12,4 @@
 2026-11-12 — Real application integration Phase 1 — Codex (GPT-6) — generated the root multistage image, hashed dependency lock, Compose/CI/Kubernetes wiring, reset helper, and image-size evidence; human review pending.
 2026-11-13 — Real app integration branch sync — Codex — merged latest main worker reliability changes and verified 50 tests, healthy worker telemetry, checker, and shutdown timing; human review pending.
 2026-11-13 — Ruff triage — Codex — identified and excluded the two vendored assessment Python tools from Ruff check/format, recorded remaining A/B-owned violations, and reviewed diffs without applying them; human review pending.
+2026-11-13 — Requirements traceability audit — Codex — audited assignment/API/setup requirements against committed main and CI evidence; generated docs/requirements-audit.md; human review pending.
