@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import timedelta
 from uuid import UUID, uuid4
@@ -13,7 +14,7 @@ class Claim:
 
 
 class Repository:
-    def __init__(self, sessions, job_model, order_model, inventory_model, item_model, lease_seconds=10, backoff_base=1, backoff_max=8):
+    def __init__(self, sessions, job_model, order_model, inventory_model, item_model, lease_seconds=10, backoff_base=1, backoff_max=8, observer=None):
         self.sessions = sessions
         self.job_model = job_model
         self.order_model = order_model
@@ -22,10 +23,24 @@ class Repository:
         self.lease_seconds = lease_seconds
         self.backoff_base = backoff_base
         self.backoff_max = backoff_max
+        self.observer = observer
+
+    @contextmanager
+    def _transaction(self):
+        events = []
+        with self.sessions.begin() as session:
+            yield session, events
+        # Transaction has committed. Telemetry failure cannot undo business state.
+        if self.observer is not None:
+            for event, fields in events:
+                try:
+                    self.observer(event, **fields)
+                except Exception:
+                    pass
 
     def claim(self, worker_id):
         Job, Order = self.job_model, self.order_model
-        with self.sessions.begin() as session:
+        with self._transaction() as (session, events):
             job = session.scalar(select(Job).where(
                 or_(and_(Job.status == "queued", Job.available_at <= func.now()),
                     and_(Job.status == "processing", Job.lease_expires_at <= func.now())),
@@ -39,8 +54,11 @@ class Repository:
             now = session.scalar(select(func.clock_timestamp()))
             if job.attempts >= min(job.max_attempts, 3):
                 self._terminal(job, order, now, "attempts_exhausted_after_interruption")
+                events.append(("job_failed", {"job_id": job.id, "attempt": job.attempts,
+                                               "reason": job.last_error}))
                 return None
-            if job.status == "processing":
+            recovered = job.status == "processing"
+            if recovered:
                 job.last_error = "lease_expired_before_completion"
             job.status = "processing"
             job.attempts += 1
@@ -50,11 +68,13 @@ class Repository:
             job.updated_at = now
             order.status = "processing"
             order.updated_at = now
+            events.append(("job_claimed", {"job_id": job.id, "order_id": order.id,
+                                           "attempt": job.attempts, "recovered": recovered}))
             return Claim(job.id, job.order_id, job.lease_token, worker_id)
 
     def complete(self, claim):
         Job, Order = self.job_model, self.order_model
-        with self.sessions.begin() as session:
+        with self._transaction() as (session, events):
             # Ownership rows are locked without waiting.
             job = session.scalar(select(Job).where(Job.id == claim.job_id)
                                  .with_for_update(skip_locked=True))
@@ -95,6 +115,7 @@ class Repository:
             job.status = "completed"
             job.updated_at = now
             job.locked_by = job.lease_token = job.lease_expires_at = None
+            events.append(("job_completed", {"job_id": job.id, "order_id": order.id}))
             return True
 
     @staticmethod
@@ -114,7 +135,7 @@ class Repository:
         self._clear_lease(job)
 
     def renew(self, claim):
-        with self.sessions.begin() as session:
+        with self._transaction() as (session, events):
             job = session.scalar(select(self.job_model).where(
                 self.job_model.id == claim.job_id).with_for_update(skip_locked=True))
             now = session.scalar(select(func.clock_timestamp()))
@@ -122,13 +143,14 @@ class Repository:
                 return False
             job.lease_expires_at = now + timedelta(seconds=self.lease_seconds)
             job.updated_at = now
+            events.append(("lease_renewed", {"job_id": job.id}))
             return True
 
     def fail(self, claim, error="processing_failed"):
         # Fixed categories only: exception strings can contain SQL or credentials.
         if error not in {"processing_failed", "inventory_invariant_failed"}:
             error = "processing_failed"
-        with self.sessions.begin() as session:
+        with self._transaction() as (session, events):
             job = session.scalar(select(self.job_model).where(
                 self.job_model.id == claim.job_id).with_for_update(skip_locked=True))
             now = session.scalar(select(func.clock_timestamp()))
@@ -141,6 +163,8 @@ class Repository:
                 return False
             if job.attempts >= min(job.max_attempts, 3):
                 self._terminal(job, order, now, error)
+                events.append(("job_failed", {"job_id": job.id, "attempt": job.attempts,
+                                               "reason": error}))
             else:
                 delay = min(self.backoff_max, self.backoff_base * 2 ** (job.attempts - 1))
                 job.status = "queued"
@@ -148,4 +172,6 @@ class Repository:
                 job.last_error = error
                 job.updated_at = now
                 self._clear_lease(job)
+                events.append(("retry_scheduled", {"job_id": job.id, "attempt": job.attempts,
+                                                    "delay_seconds": delay, "reason": error}))
             return True
