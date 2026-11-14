@@ -1,0 +1,4 @@
+{"timestamp": "2026-11-14T10:05:56.072128+00:00", "level": "INFO", "event": "worker_started", "worker_id": "test-worker-60b47887921447e08ceebcf4bf14df5c", "metrics_port": 61085}
+{"timestamp": "2026-11-14T10:05:56.087493+00:00", "level": "INFO", "event": "job_claimed", "worker_id": "test-worker-60b47887921447e08ceebcf4bf14df5c", "job_id": "4ace0dcf-7808-4d2d-a6d6-9371c211ed54", "order_id": "20d75ac1-c3c8-4ad1-8221-8e273322caf1", "attempt": 1, "recovered": false}
+{"timestamp": "2026-11-14T10:05:56.116508+00:00", "level": "INFO", "event": "job_completed", "worker_id": "test-worker-60b47887921447e08ceebcf4bf14df5c", "job_id": "4ace0dcf-7808-4d2d-a6d6-9371c211ed54", "order_id": "20d75ac1-c3c8-4ad1-8221-8e273322caf1"}
+{"timestamp": "2026-11-14T10:05:56.116623+00:00", "level": "INFO", "event": "worker_stopped", "worker_id": "test-worker-60b47887921447e08ceebcf4bf14df5c"}

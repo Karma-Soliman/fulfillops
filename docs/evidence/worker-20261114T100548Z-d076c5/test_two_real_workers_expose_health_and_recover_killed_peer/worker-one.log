@@ -1,0 +1,2 @@
+{"timestamp": "2026-11-14T10:05:49.750709+00:00", "level": "INFO", "event": "worker_started", "worker_id": "test-worker-5c7c39863b044f3aac6ddaa1abb3341f", "metrics_port": 61062}
+{"timestamp": "2026-11-14T10:05:49.768827+00:00", "level": "INFO", "event": "job_claimed", "worker_id": "test-worker-5c7c39863b044f3aac6ddaa1abb3341f", "job_id": "a410107e-8a86-4025-83e0-12bfdc745bc8", "order_id": "e81c4993-05da-482d-8a13-e41895dad0c6", "attempt": 1, "recovered": false}
