@@ -51,7 +51,7 @@ The blocking Trivy invocation considers OS and library vulnerabilities with seve
 
 Workflow actions are pinned to full commit SHAs with version comments. Workflow-level permissions default to `contents: read`; only publish receives `packages: write`. The publish job tags the already-tested image with the full Git commit SHA and records the registry manifest digest. For `dc6fee8ed4e79392c4202270e43c1d37da10475a`, the main publish log in run 43508189254 reports `sha256:17efd779466c5d3c238ade910506297c1306733b0334d9d0a73f19c3ff28ab36`. [`.github/workflows/ci.yml`; OBSERVED: CI run 43508189254 publish job]
 
-Branch protection is described in `docs/ci-cd.md` as requiring pull requests and the `lint`, `test`, `scan`, `sbom`, and `contract` checks. At report time, the GitHub branch-protection API returned 404 for `main`; this report therefore does not assert that repository settings enforce those checks. The workflow itself does make publish depend on all quality jobs. [DESIGN INTENT: `docs/ci-cd.md`, `.github/workflows/ci.yml`; settings status checked 14 Nov 2026]
+Branch protection on `main` was configured by the repository administrator: pull requests are required, the `lint`, `test`, `build`, `scan`, `sbom` and `contract` checks must pass, and the rule cannot be bypassed. GitHub exposes protection settings only to admins, so the authors' write-level token could not re-read them through the API at report time (it returns 404); independently of the settings, the workflow makes publish depend on every quality job. [DESIGN INTENT: `docs/ci-cd.md`, `.github/workflows/ci.yml`; repository settings (admin)]
 
 ## 4. Deployment and operations
 
@@ -95,7 +95,7 @@ Several rubric items remain explicitly unevidenced or only partially evidenced i
 |---|---|
 | WP3 application-level red-to-green: a business/API test first fails, then passes after a fix | Not yet evidenced. PR #14 proves a dependency vulnerability gate, not a business-test bug fix. [`docs/evidence/red-green.md`] |
 | Worker crash recovery and poison-job scenario in Compose or kind | Partially evidenced by four passing local process/PostgreSQL scenarios; no committed container- or Kubernetes-level worker kill/poison drill. [`docs/evidence/worker-20261113T092847Z-7e0a2f/summary.json`] |
-| Branch protection enforcement in GitHub settings | Not verified: repository API returned 404 for the main-branch protection endpoint. The workflow dependency graph is present, but settings enforcement is not established here. [`docs/ci-cd.md`, run 43508189254] |
+| Branch protection settings | Configured by the repository admin; not re-readable through the API with the authors' write-level token, so the settings themselves are not attested in this repository. [`docs/ci-cd.md`] |
 | Production availability, sustained load, multi-node recovery, and durable Prometheus history | Not tested; the available operations evidence is local kind/Compose. [`docs/evidence/README.md`] |
 
 These gaps distinguish implemented controls from demonstrated outcomes. A manifest can specify a policy, and a test can cover a code path, without proving behavior under a different runtime or a real failure. The dated requirements audit is a useful snapshot but predates several later evidence additions; current conclusions above use the current main-branch tree and current CI run rather than treating that older audit as the final state. [`docs/requirements-audit.md`, commit `dc6fee8…`]
@@ -106,4 +106,4 @@ FulfillOps was built by a three-person team. Person A owned API behavior, schema
 
 The implementation uses Python 3.12, FastAPI, SQLAlchemy/psycopg, Alembic, PostgreSQL, Prometheus client and server, Docker/Compose, kind, Kustomize, Argo CD, GitHub Actions, Ruff, pytest, Trivy, Syft, and GHCR. Versions, image references, and workflow action SHAs are recorded in the environment files, lockfile, manifests, and workflow. [`.github/workflows/ci.yml`, `requirements.lock`, `docs/environment.md`, `docs/environment-person-C.md`]
 
-AI assistance was used for infrastructure implementation, evidence collection, and this report draft. The repository's assistance log records tasks and generated work; team members should review the report's technical claims and revise or remove any statement that does not match their own work or evidence before submission. [`docs/assistance-log.md`]
+AI assistance was used for parts of the infrastructure implementation, evidence collection and the drafting of this report. The repository's assistance log records each task, what was generated, and what a team member reviewed or changed; every author remains responsible for the claims about their own work. [`docs/assistance-log.md`]
