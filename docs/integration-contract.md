@@ -262,7 +262,7 @@ Tests and destructive operations must use an isolated test database, never the d
 
 ## 3. Worker and Job Contract
 
-**Owner: Person B – Worker**
+**Owner: Person B Karma – Worker**
 
 ### 3.1 Job Claiming
 
