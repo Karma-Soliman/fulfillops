@@ -1,0 +1,40 @@
+{
+  "started_utc": "2026-11-14T10:05:48.450059+00:00",
+  "finished_utc": "2026-11-14T10:05:56.386895+00:00",
+  "git_revision": "6b955a88680dea8a5519d5fb564cf6c6107d6560",
+  "working_tree_status": [
+    " M .DS_Store",
+    "?? docs/evidence/drift-20261114T093950Z.txt",
+    "?? docs/evidence/worker-20261114T100548Z-d076c5/"
+  ],
+  "python_version": "3.12.6",
+  "status": "passed",
+  "pytest_exit_code": 0,
+  "scenarios": [
+    {
+      "name": "test_two_real_workers_expose_health_and_recover_killed_peer",
+      "status": "passed"
+    },
+    {
+      "name": "test_poison_processing_callback_reaches_durable_failure",
+      "status": "passed"
+    },
+    {
+      "name": "test_third_crashed_attempt_is_failed_without_fourth_claim",
+      "status": "passed"
+    },
+    {
+      "name": "test_sigterm_during_active_completion_finishes_without_claiming_more",
+      "status": "passed"
+    }
+  ],
+  "limitations": [
+    "Local Python processes and real PostgreSQL; not a container or Kubernetes drill.",
+    "Crash-recovery scenario uses four-second leases and natural expiry.",
+    "Poison callback runs in test harness; retries are made due via fixture SQL after backoff checks.",
+    "Third-crash scenario advances expiry through fixture SQL.",
+    "Database snapshots omit customers, keys and lease tokens. URL/password diagnostics are redacted.",
+    "Each scenario drops only its own schema after saving evidence.",
+    "Metric counters are process-local; killed processes can lose unscripted scrape intervals."
+  ]
+}

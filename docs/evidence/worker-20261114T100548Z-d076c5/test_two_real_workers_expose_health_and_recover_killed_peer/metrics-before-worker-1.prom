@@ -1,0 +1,55 @@
+# HELP fulfillops_worker_claims_total Committed claims including reclaims
+# TYPE fulfillops_worker_claims_total counter
+fulfillops_worker_claims_total 1.0
+# HELP fulfillops_worker_claims_created Committed claims including reclaims
+# TYPE fulfillops_worker_claims_created gauge
+fulfillops_worker_claims_created 1.794650749617111e+09
+# HELP fulfillops_worker_retries_total Committed claims after the first attempt
+# TYPE fulfillops_worker_retries_total counter
+fulfillops_worker_retries_total 0.0
+# HELP fulfillops_worker_retries_created Committed claims after the first attempt
+# TYPE fulfillops_worker_retries_created gauge
+fulfillops_worker_retries_created 1.794650749617121e+09
+# HELP fulfillops_worker_recoveries_total Committed reclaims after lease expiry
+# TYPE fulfillops_worker_recoveries_total counter
+fulfillops_worker_recoveries_total 0.0
+# HELP fulfillops_worker_recoveries_created Committed reclaims after lease expiry
+# TYPE fulfillops_worker_recoveries_created gauge
+fulfillops_worker_recoveries_created 1.794650749617126e+09
+# HELP fulfillops_worker_completed_total Committed fulfilled orders
+# TYPE fulfillops_worker_completed_total counter
+fulfillops_worker_completed_total 0.0
+# HELP fulfillops_worker_completed_created Committed fulfilled orders
+# TYPE fulfillops_worker_completed_created gauge
+fulfillops_worker_completed_created 1.79465074961713e+09
+# HELP fulfillops_orders_failed_total Committed terminally failed orders
+# TYPE fulfillops_orders_failed_total counter
+fulfillops_orders_failed_total 0.0
+# HELP fulfillops_orders_failed_created Committed terminally failed orders
+# TYPE fulfillops_orders_failed_created gauge
+fulfillops_orders_failed_created 1.794650749617134e+09
+# HELP fulfillops_worker_retries_scheduled_total Committed retry schedules
+# TYPE fulfillops_worker_retries_scheduled_total counter
+fulfillops_worker_retries_scheduled_total 0.0
+# HELP fulfillops_worker_retries_scheduled_created Committed retry schedules
+# TYPE fulfillops_worker_retries_scheduled_created gauge
+fulfillops_worker_retries_scheduled_created 1.794650749617138e+09
+# HELP fulfillops_worker_lease_renewals_total Committed lease renewals
+# TYPE fulfillops_worker_lease_renewals_total counter
+fulfillops_worker_lease_renewals_total 0.0
+# HELP fulfillops_worker_lease_renewals_created Committed lease renewals
+# TYPE fulfillops_worker_lease_renewals_created gauge
+fulfillops_worker_lease_renewals_created 1.794650749617142e+09
+# HELP fulfillops_worker_claims_lost_total Attempts abandoned without valid ownership
+# TYPE fulfillops_worker_claims_lost_total counter
+fulfillops_worker_claims_lost_total 0.0
+# HELP fulfillops_worker_claims_lost_created Attempts abandoned without valid ownership
+# TYPE fulfillops_worker_claims_lost_created gauge
+fulfillops_worker_claims_lost_created 1.794650749617145e+09
+# HELP fulfillops_worker_database_errors_total Database operation errors
+# TYPE fulfillops_worker_database_errors_total counter
+# HELP fulfillops_worker_active_jobs Jobs currently processed by this worker
+# TYPE fulfillops_worker_active_jobs gauge
+fulfillops_worker_active_jobs 1.0
+# HELP fulfillops_worker_processing_duration_seconds Attempt duration, excluding queue time
+# TYPE fulfillops_worker_processing_duration_seconds histogram
